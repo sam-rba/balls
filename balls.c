@@ -17,7 +17,8 @@ enum {
 
 	KEY_QUIT = 'q' ,
 
-	NBALLS = 3,
+	DEFAULT_NBALLS = 3,
+
 	VMAX = 5,
 	G = 1,
 	MASS = 1,
@@ -66,11 +67,21 @@ void frametick(void *arg);
 
 void
 threadmain(int argc, char *argv[]) {
+	int nballs;
 	Image *bg, *walls;
 	Mousectl *mctl;
 	Keyboardctl *kctl;
 	int resize[2];
 	Rune key;
+
+	nballs = DEFAULT_NBALLS;
+	if (argc > 1) {
+		if (sscanf(argv[1], "%d", &nballs) != 1 || nballs < 1) {
+			printf("usage: balls [number of balls]\n");
+			threadexitsall(0);
+		}
+	}
+	printf("nballs: %ud\n", nballs);
 
 	if (init(argv[0], &mctl, &kctl))
 		sysfatal("%s: %r", argv[0]);
@@ -87,7 +98,7 @@ threadmain(int argc, char *argv[]) {
 	
 	drawbg(walls, bg);
 
-	spawnballs(NBALLS);
+	spawnballs(nballs);
 
 	enum { RESIZE = 0, KEYBD = 1 };
 	Alt alts[3] = {
