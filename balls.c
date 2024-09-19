@@ -52,6 +52,8 @@ void spawnball(void);
 void drawbg(Image *walls, Image *bg);
 void spawnballs(int n);
 Channel **allocchans(int nchans, int elsize, int nel);
+void mcopycolskip(Channel *vec[], Channel **matrix[], int n, int col, int skip);
+void vcopyskip(Channel *dst[], Channel *src[], int n, int skip);
 void nooverlapcircles(Point centers[], int n);
 Point randptinrect(Rectangle r);
 int randint(int lo, int hi);
@@ -175,15 +177,11 @@ spawnballs(int n) {
 
 		if ((b->posin = malloc((n-1)*sizeof(Channel *))) == nil)
 			sysfatal("failed to allocate array of incoming position channels");
-		for (j = 0; j < i; j++)
-			b->posin[j] = poschans[j][i];
-		for (j = i+1; j < n; j++)
-			b->posin[j-1] = poschans[j][i];
+		mcopycolskip(b->posin, poschans, n, i, i);
 
 		if ((b->posout = malloc((n-1)*sizeof(Channel *))) == nil)
 			sysfatal("failed to allocate array of outgoing position channels");
-		memmove(b->posout, poschans[i], i*sizeof(Channel *));
-		memmove(b->posout, poschans[i]+i+1, (n-i-1)*sizeof(Channel *));
+		vcopyskip(b->posout, poschans[i], n, i);
 
 		b->nothers = n-1;
 
@@ -216,6 +214,24 @@ allocchans(int nchans, int elsize, int nel) {
 	}
 	cs[nchans] = nil;
 	return cs;
+}
+
+/* copy column col of nxn matrix, except for element skip, into n-1 length vec */
+void
+mcopycolskip(Channel *vec[], Channel **matrix[], int n, int col, int skip) {
+	int i;
+
+	for (i = 0; i < skip; i++)
+		vec[i] = matrix[i][col];
+	for (i = skip+1; i < n; i++)
+		vec[i-1] = matrix[i][col];
+}
+
+/* copy each element in n-length src, except for element skip, into n-1 length dst */
+void
+vcopyskip(Channel *dst[], Channel *src[], int n,  int skip) {
+	memmove(dst, src, skip*sizeof(Channel *));
+	memmove(dst, src+skip+1, (n-skip-1)*sizeof(Channel *));
 }
 
 void
