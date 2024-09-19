@@ -2,11 +2,13 @@ CC=9c
 LD=9l
 O=o
 
-balls: balls.$O
-	$LD -o balls balls.$O
+OBJ = balls.$O vec.$O collision.$O
+
+balls: $OBJ
+	$LD -o balls $OBJ
 
 %.$O: %.c
 	$CC $CFLAGS $stem.c
 
 clean:V:
-	rm -f balls.$O balls
+	rm -f ./*.$O balls

@@ -1,10 +1,8 @@
-#include <u.h>
-#include <libc.h>
+#include "balls.h"
+
 #include <stdio.h>
-#include <draw.h>
 #include <thread.h>
 #include <mouse.h>
-#include <cursor.h>
 #include <keyboard.h>
 
 #define NELEMS(arr) (sizeof(arr) / sizeof(arr[0]))
@@ -19,10 +17,10 @@ enum {
 
 	KEY_QUIT = 'q' ,
 
-	NBALLS = 2,
-	RADIUS = 20,
+	NBALLS = 3,
 	VMAX = 5,
 	G = 1,
+	MASS = 1,
 
 	FPS = 60,
 	NS_PER_SEC = 1000000000,
@@ -33,14 +31,14 @@ enum {
 };
 
 typedef struct {
-	Point pos;
-	int vx, vy;
-	int col;
+	Ball b;
+
+	int color;
 
 	Channel *frametick;
 
-	Channel **posin; /* receive positions of other balls */
-	Channel **posout; /* send position to other balls */
+	Channel **in; /* <-chan Ball */
+	Channel **out; /* chan<- Ball */
 	int nothers; /* number of other balls */
 } BallArg;
 
@@ -57,8 +55,6 @@ void vcopyskip(Channel *dst[], Channel *src[], int n, int skip);
 void nooverlapcircles(Point centers[], int n);
 Point randptinrect(Rectangle r);
 int randint(int lo, int hi);
-int isoverlapcircle(Point p, Point q);
-int dist(Point p, Point q);
 void ball(void *arg);
 Image *alloccircle(int fg, int bg);
 void drawcircle(Image *m, Point pos);
@@ -137,61 +133,75 @@ drawbg(Image *walls, Image *bg) {
 void
 spawnballs(int n) {
 	Channel **ticks;
-	Point *pos;
+	Point *ps;
 	int i, j;
-	BallArg *b;
-	Channel ***poschans;
+	BallArg *arg;
+	Channel ***cs;
 
 	if ((ticks = allocchans(n, sizeof(int), TICK_BUFSIZE)) == nil)
 		sysfatal("failed to allocate frame ticker channels");
 
 	threadcreate(frametick, ticks, mainstacksize);
 
-	if ((pos = malloc(n*sizeof(Point))) == nil)
+	if ((ps = malloc(n*sizeof(Point))) == nil)
 		sysfatal("failed to allocate position array");
-	nooverlapcircles(pos, n);
+	nooverlapcircles(ps, n);
 
-	if ((poschans = malloc(n*sizeof(Channel **))) == nil)
-		sysfatal("failed to allocate position channel matrix");
+	if ((cs = malloc(n*sizeof(Channel **))) == nil)
+		sysfatal("failed to allocate channel matrix");
 	for (i = 0; i < n; i++) {
-		if ((poschans[i] = malloc(n*sizeof(Channel *))) == nil)
-			sysfatal("failed to allocate row of position channel matrix");
+		if ((cs[i] = malloc(n*sizeof(Channel *))) == nil)
+			sysfatal("failed to allocate row of channel matrix");
 		for (j = 0; j < n; j++) {
 			if (j == i)
 				continue;
-			if ((poschans[i][j] = chancreate(sizeof(Point), POS_BUFSIZE)) == nil)
-				sysfatal("failed to create position channel");
+			if ((cs[i][j] = chancreate(sizeof(Ball), POS_BUFSIZE)) == nil)
+				sysfatal("failed to create channel");
 		}
 	}
 
 	for (i = 0; i < n; i++) {
-		if ((b = malloc(sizeof(BallArg))) == nil)
-			sysfatal("failed to allocate ball");
-
-		b->pos = pos[i];
-		b->vx = randint(-VMAX, VMAX+1);
-		b->vy = randint(-VMAX, VMAX+1);
-		b->col = ballcolors[randint(0, NELEMS(ballcolors))];
-
-		b->frametick = ticks[i];
-
-		if ((b->posin = malloc((n-1)*sizeof(Channel *))) == nil)
-			sysfatal("failed to allocate array of incoming position channels");
-		mcopycolskip(b->posin, poschans, n, i, i);
-
-		if ((b->posout = malloc((n-1)*sizeof(Channel *))) == nil)
-			sysfatal("failed to allocate array of outgoing position channels");
-		vcopyskip(b->posout, poschans[i], n, i);
-
-		b->nothers = n-1;
-
-		threadcreate(ball, b, mainstacksize);
+		for (j = 0; j < n; j++)
+			printf("%16p ", cs[i][j]);
+		printf("\n\n");
 	}
 
-	free(pos);
+	for (i = 0; i < n; i++) {
+		if ((arg = malloc(sizeof(BallArg))) == nil)
+			sysfatal("failed to allocate ball");
+
+		arg->b.p = ps[i];
+		arg->b.v = V(randint(-VMAX, VMAX+1), randint(-VMAX, VMAX+1));
+		arg->b.m = MASS;
+
+		arg->color = ballcolors[randint(0, NELEMS(ballcolors))];
+
+		arg->frametick = ticks[i];
+
+		if ((arg->in = malloc((n-1)*sizeof(Channel *))) == nil)
+			sysfatal("failed to allocate array of incoming channels");
+		mcopycolskip(arg->in, cs, n, i, i);
+		printf("%d in:\n", i);
+		for (j = 0; j < n-1; j++)
+			printf("%16p ", arg->in[j]);
+		printf("\n");
+
+		if ((arg->out = malloc((n-1)*sizeof(Channel *))) == nil)
+			sysfatal("failed to allocate array of outgoing channels");
+		vcopyskip(arg->out, cs[i], n, i);
+		printf("%d: out\n", i);
+		for (j = 0; j < n-1; j++)
+			printf("%16p ", arg->out[j]);
+		printf("\n\n");
+		arg->nothers = n-1;
+
+		threadcreate(ball, arg, mainstacksize);
+	}
+
+	free(ps);
 	for (i = 0; i < n; i++)
-		free(poschans[i]);
-	free(poschans);
+		free(cs[i]);
+	free(cs);
 }
 
 Channel **
@@ -230,8 +240,12 @@ mcopycolskip(Channel *vec[], Channel **matrix[], int n, int col, int skip) {
 /* copy each element in n-length src, except for element skip, into n-1 length dst */
 void
 vcopyskip(Channel *dst[], Channel *src[], int n,  int skip) {
-	memmove(dst, src, skip*sizeof(Channel *));
-	memmove(dst, src+skip+1, (n-skip-1)*sizeof(Channel *));
+	int i;
+
+	for (i = 0; i < skip; i++)
+		dst[i] = src[i];
+	for (i = skip+1; i < n; i++)
+		dst[i-1] = src[i];
 }
 
 void
@@ -242,7 +256,7 @@ nooverlapcircles(Point centers[], int n) {
 	for (i = 0; i < n; i++) {
 		centers[i] = randptinrect(insetrect(bounds, RADIUS));
 		for (j = 0; j < i; j++)
-			if (isoverlapcircle(centers[j], centers[i]))
+			if (iscollision(centers[j], centers[i]))
 				break;
 		if (j < i) { /* overlapping */
 			i--;
@@ -261,74 +275,71 @@ randint(int lo, int hi) {
 	return (rand() % (hi-lo)) + lo;
 }
 
-int
-isoverlapcircle(Point p, Point q) {
-	return dist(p, q) < 2*RADIUS;
-}
-
-int
-dist(Point p, Point q) {
-	Rectangle r;
-
-	r = Rpt(p, q);
-	return sqrt(Dx(r)*Dx(r) + Dy(r)*Dy(r));
-}
-
 void
 ball(void *arg) {
-	BallArg *b;
-	Point p1, p2;
+	BallArg *barg;
+	Point p, oldp;
+	Vec v;
+	int m;
 	Image *fill, *erase;
-	int t, i, vsum;
-	float rx, ry;
-	Point otherpos, vdir;
+	int i;
+	Ball other;
+	Point midpoint;
+	Vec d, n;
+	int magnitude;
+	int t;
 
-	b = (BallArg *) arg;
-	p1 = p2 = b->pos;
+	barg = (BallArg *) arg;
+	p = oldp = barg->b.p;
+	v = barg->b.v;
+	m = barg->b.m;
 
-	fill = alloccircle(b->col, DTransparent);
+	fill = alloccircle(barg->color, DTransparent);
 	erase = alloccircle(BG, DTransparent);
 	if (fill == nil ||erase == nil)
 		sysfatal("failed to allocate image");
 
 	for (;;) {
-		b->vy += G;
+		v.y += G;
 
-		p2.x += b->vx;
-		p2.y += b->vy;
+		p = ptaddv(p, v);
 
-		printf("(%d,%d) %d %d\n", b->pos.x, b->pos.y, b->vx, b->vy);
+		printf("(%d,%d) %d %d\n", p.x, p.y, v.x, v.y);
 
 		/* check for wall collision */
-		if (p2.x < bounds.min.x+RADIUS || p2.x > bounds.max.x-RADIUS) {
-			p2.x = clamp(p2.x, bounds.min.x+RADIUS, bounds.max.x-RADIUS);
-			printf("clamped to %d\n", b->pos.x);
-			b->vx = -b->vx;
+		if (p.x < bounds.min.x+RADIUS || p.x > bounds.max.x-RADIUS) {
+			p.x = clamp(p.x, bounds.min.x+RADIUS, bounds.max.x-RADIUS);
+			printf("clamped to %d\n", p.x);
+			v.x = -v.x;
 		}
-		if (p2.y < bounds.min.y+RADIUS || p2.y > bounds.max.y-RADIUS) {
-			p2.y = clamp(p2.y, bounds.min.y+RADIUS, bounds.max.y-RADIUS);
-			b->vy = -b->vy;
+		if (p.y < bounds.min.y+RADIUS || p.y > bounds.max.y-RADIUS) {
+			p.y = clamp(p.y, bounds.min.y+RADIUS, bounds.max.y-RADIUS);
+			v.y = -v.y;
 		}
 
-		broadcast(p2, b->posout, b->nothers);
+		broadcast(p, barg->out, barg->nothers);
 
 		/* check for ball collision */
-		for (i = 0; i < b->nothers; i++) {
-			recv(b->posin[i], &otherpos);
-			if (isoverlapcircle(p2, otherpos)) {
-				vdir = subpt(p2, otherpos);
-				rx = (float) vdir.x / (float) (vdir.x + vdir.y);
-				ry = (float) vdir.y / (float) (vdir.x + vdir.y);
-				vsum = b->vx + b->vy;
-				b->vx = rx * (float) vsum;
-				b->vy = ry * (float) vsum;
+		for (i = 0; i < barg->nothers; i++) {
+			printf("recv %16p\n", barg->in[i]);
+			recv(barg->in[i], &other);
+			if (iscollision(p, other.p)) {
+				midpoint = divpt(addpt(p, other.p), 2);
+				d = Vpt(p, other.p);
+				p = ptaddv(midpoint, vmuls(unitnorm(d), -RADIUS));
+
+				n = unitnorm(Vpt(other.p, p));
+				magnitude = 2*vdot(v, n) / (m + other.m);
+				v = vsub(v, vmuls(
+					vsub(vmuls(n, m), vmuls(n, other.m)),
+					magnitude));
 			}
 		}		
-
-		recv(b->frametick, &t);
-		drawcircle(erase, p1);
-		drawcircle(fill, p2);
-		p1 = p2;
+		
+		recv(barg->frametick, &t);
+		drawcircle(erase, oldp);
+		drawcircle(fill, p);
+		oldp = p;
 
 	}	
 }
@@ -352,7 +363,6 @@ alloccircle(int fg, int bg) {
 	return m;
 }
 
-
 void
 drawcircle(Image *m, Point pos) {
 	draw(screen, rectaddpt(bounds, subpt(pos, Pt(RADIUS, RADIUS))), m, nil, ZP);
@@ -375,8 +385,10 @@ max(int a, int b) {
 
 void
 broadcast(Point p, Channel *cs[], int n) {
-	while (n-- > 0)
+	while (n-- > 0) {
+		printf("send %16p\n", cs[n]);
 		send(cs[n], &p);
+	}
 }
 
 void
