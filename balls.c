@@ -305,17 +305,6 @@ ball(void *arg) {
 
 		printf("(%d,%d) %f %f\n", p.x, p.y, v.x, v.y);
 
-		/* check for wall collision */
-		if (p.x < bounds.min.x+RADIUS || p.x > bounds.max.x-RADIUS) {
-			p.x = clamp(p.x, bounds.min.x+RADIUS, bounds.max.x-RADIUS);
-			printf("clamped to %d\n", p.x);
-			v.x = -v.x;
-		}
-		if (p.y < bounds.min.y+RADIUS || p.y > bounds.max.y-RADIUS) {
-			p.y = clamp(p.y, bounds.min.y+RADIUS, bounds.max.y-RADIUS);
-			v.y = -v.y;
-		}
-
 		broadcast(p, barg->out, barg->nothers);
 
 		/* check for ball collision */
@@ -340,7 +329,17 @@ ball(void *arg) {
 				printf("newv: (%2.2f,%2.2f)\n", v.x, v.y);
 			}
 		}		
-		
+
+		/* check for wall collision */
+		if (p.x < bounds.min.x+RADIUS || p.x > bounds.max.x-RADIUS) {
+			p.x = clamp(p.x, bounds.min.x+RADIUS, bounds.max.x-RADIUS);
+			printf("clamped to %d\n", p.x);
+			v.x = -v.x;
+		}
+		if (p.y < bounds.min.y+RADIUS || p.y > bounds.max.y-RADIUS) {
+			p.y = clamp(p.y, bounds.min.y+RADIUS, bounds.max.y-RADIUS);
+			v.y = -v.y;
+		}		
 		recv(barg->frametick, &t);
 		drawcircle(erase, oldp);
 		drawcircle(fill, p);
