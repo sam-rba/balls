@@ -6,23 +6,23 @@ vsub(Vec v1, Vec v2) {
 }
 
 Vec
-vmuls(Vec v, int a) {
+vmuls(Vec v, double a) {
 	return V(v.x*a, v.y*a);
 }
 
 Vec
-vdivs(Vec v, int a) {
+vdivs(Vec v, double a) {
 	if (a == 0)
 		return V(0, 0);
 	return V(v.x/a, v.y/a);
 }
 
-int
+double
 vdot(Vec v1, Vec v2) {
 	return v1.x*v2.x + v1.y*v2.y;
 }
 
-int
+double
 vlen(Vec v) {
 	return sqrt(v.x*v.x + v.y*v.y);
 }
@@ -40,12 +40,16 @@ ptaddv(Point p, Vec v) {
 }
 
 Vec
-V(int x, int y) {
+V(double x, double y) {
 	Vec v = {x, y};
 	return v;
 }
 
 Vec
 Vpt(Point p, Point q) {
-	return V(p.x-q.x, p.y-q.y);
+	double dx, dy;
+
+	dx = (double) q.x - (double) p.x;
+	dy = (double) q.y - (double) p.y;
+	return V(dx, dy);
 }

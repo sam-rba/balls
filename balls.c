@@ -7,6 +7,8 @@
 
 #define NELEMS(arr) (sizeof(arr) / sizeof(arr[0]))
 
+#define G 0.25
+
 enum {
 	BG = DWhite,
 	WALLS = DBlack,
@@ -19,9 +21,8 @@ enum {
 
 	DEFAULT_NBALLS = 3,
 
-	VMAX = 5,
-	G = 1,
-	MASS = 1,
+	VMAX = 3,
+	MASS = 10,
 
 	FPS = 60,
 	NS_PER_SEC = 1000000000,
@@ -172,17 +173,11 @@ spawnballs(int n) {
 	}
 
 	for (i = 0; i < n; i++) {
-		for (j = 0; j < n; j++)
-			printf("%16p ", cs[i][j]);
-		printf("\n\n");
-	}
-
-	for (i = 0; i < n; i++) {
 		if ((arg = malloc(sizeof(BallArg))) == nil)
 			sysfatal("failed to allocate ball");
 
 		arg->b.p = ps[i];
-		arg->b.v = V(randint(-VMAX, VMAX+1), randint(-VMAX, VMAX+1));
+		arg->b.v = V((double) randint(-VMAX, VMAX+1), (double) randint(-VMAX, VMAX+1));
 		arg->b.m = MASS;
 
 		arg->color = ballcolors[randint(0, NELEMS(ballcolors))];
@@ -192,18 +187,11 @@ spawnballs(int n) {
 		if ((arg->in = malloc((n-1)*sizeof(Channel *))) == nil)
 			sysfatal("failed to allocate array of incoming channels");
 		mcopycolskip(arg->in, cs, n, i, i);
-		printf("%d in:\n", i);
-		for (j = 0; j < n-1; j++)
-			printf("%16p ", arg->in[j]);
-		printf("\n");
 
 		if ((arg->out = malloc((n-1)*sizeof(Channel *))) == nil)
 			sysfatal("failed to allocate array of outgoing channels");
 		vcopyskip(arg->out, cs[i], n, i);
-		printf("%d: out\n", i);
-		for (j = 0; j < n-1; j++)
-			printf("%16p ", arg->out[j]);
-		printf("\n\n");
+
 		arg->nothers = n-1;
 
 		threadcreate(ball, arg, mainstacksize);
@@ -297,7 +285,7 @@ ball(void *arg) {
 	Ball other;
 	Point midpoint;
 	Vec d, n;
-	int magnitude;
+	double magnitude;
 	int t;
 
 	barg = (BallArg *) arg;
@@ -315,7 +303,7 @@ ball(void *arg) {
 
 		p = ptaddv(p, v);
 
-		printf("(%d,%d) %d %d\n", p.x, p.y, v.x, v.y);
+		printf("(%d,%d) %f %f\n", p.x, p.y, v.x, v.y);
 
 		/* check for wall collision */
 		if (p.x < bounds.min.x+RADIUS || p.x > bounds.max.x-RADIUS) {
@@ -332,18 +320,24 @@ ball(void *arg) {
 
 		/* check for ball collision */
 		for (i = 0; i < barg->nothers; i++) {
-			printf("recv %16p\n", barg->in[i]);
 			recv(barg->in[i], &other);
 			if (iscollision(p, other.p)) {
 				midpoint = divpt(addpt(p, other.p), 2);
-				d = Vpt(p, other.p);
-				p = ptaddv(midpoint, vmuls(unitnorm(d), -RADIUS));
+				d = Vpt(other.p, p);
+				p = ptaddv(midpoint, vmuls(unitnorm(d), RADIUS));
+
+				printf("collision (%d,%d), (%d,%d)\n", p.x, p.y, other.p.x, other.p.y);
+
+				printf("oldv: (%2.2f,%2.2f\n", v.x, v.y);
 
 				n = unitnorm(Vpt(other.p, p));
-				magnitude = 2*vdot(v, n) / (m + other.m);
-				v = vsub(v, vmuls(
-					vsub(vmuls(n, m), vmuls(n, other.m)),
-					magnitude));
+				magnitude = 2*(vdot(v, n) - vdot(other.v, n)) / (m + other.m);
+
+				printf("n: (%2.2f,%2.2f), magnitude: %2.2f\n", n.x, n.y, magnitude);
+
+				v = vsub(v, vmuls(n, magnitude * m));
+
+				printf("newv: (%2.2f,%2.2f)\n", v.x, v.y);
 			}
 		}		
 		
@@ -396,10 +390,8 @@ max(int a, int b) {
 
 void
 broadcast(Point p, Channel *cs[], int n) {
-	while (n-- > 0) {
-		printf("send %16p\n", cs[n]);
+	while (n-- > 0)
 		send(cs[n], &p);
-	}
 }
 
 void
