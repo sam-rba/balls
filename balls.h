@@ -4,10 +4,6 @@
 #include <draw.h>
 #include <cursor.h>
 
-enum {
-	RADIUS = 20,
-};
-
 typedef struct {
 	double x, y;
 } Vec;
@@ -17,9 +13,10 @@ typedef struct {
 } Line;
 
 typedef struct {
-	Point p; /* position */
-	Vec v; /* velocity */
-	double m; /* mass */
+	Point p; /* position [pixels] */
+	Vec v; /* velocity [m/s] */
+	uint r; /* radius [pixels] */
+	double m; /* mass [kg] */
 } Ball;
 
 Vec vsub(Vec v1, Vec v2);
@@ -33,9 +30,9 @@ Vec V(double x, double y);
 Vec Vpt(Point p, Point q);
 
 void drawbg(Image *walls, Image *bg);
-Image *alloccircle(int fg, int bg);
+Image *alloccircle(int fg, int bg, uint radius);
 void drawcircle(Image *m, Point pos);
 
-int iscollision(Point p, Point q);
+int iscollision(Point p1, uint r1, Point p2, uint r2);
 void collideball(Ball *b1, const Ball *b2);
 void collidewall(Ball *b, Rectangle wall);

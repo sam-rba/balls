@@ -5,12 +5,12 @@ static int min(int a, int b);
 static int max(int a, int b);
 
 int
-iscollision(Point p, Point q) {
+iscollision(Point p1, uint r1, Point p2, uint r2) {
 	int dx, dy;
 
-	dx = p.x - q.x;
-	dy = p.y - q.y;
-	return (dx*dx + dy*dy) <= 4*RADIUS*RADIUS;
+	dx = p1.x - p2.x;
+	dy = p1.y - p2.y;
+	return (dx*dx + dy*dy) <= (r1+r2)*(r1+r2);
 }
 
 void
@@ -19,11 +19,11 @@ collideball(Ball *b1, const Ball *b2) {
 	Vec d, n;
 	double magnitude;
 
-	if (!iscollision(b1->p, b2->p))
+	if (!iscollision(b1->p, b1->r, b2->p, b2->r))
 		return;
 	midpoint = divpt(addpt(b1->p, b2->p), 2);
 	d = Vpt(b2->p, b1->p);
-	b1->p = ptaddv(midpoint, vmuls(unitnorm(d), RADIUS));
+	b1->p = ptaddv(midpoint, vmuls(unitnorm(d), b1->r));
 
 	printf("collision (%d,%d), (%d,%d)\n", b1->p.x, b1->p.y, b2->p.x, b2->p.y);
 
@@ -41,13 +41,15 @@ collideball(Ball *b1, const Ball *b2) {
 
 void
 collidewall(Ball *b, Rectangle wall) {
-	if (b->p.x < wall.min.x+RADIUS || b->p.x > wall.max.x-RADIUS) {
-		b->p.x = clamp(b->p.x, wall.min.x+RADIUS, wall.max.x-RADIUS);
+	wall = insetrect(wall, b->r);
+
+	if (b->p.x < wall.min.x || b->p.x > wall.max.x) {
+		b->p.x = clamp(b->p.x, wall.min.x, wall.max.x);
 		printf("clamped to %d\n", b->p.x);
 		b->v.x = -b->v.x;
 	}
-	if (b->p.y < wall.min.y+RADIUS || b->p.y > wall.max.y-RADIUS) {
-		b->p.y = clamp(b->p.y, wall.min.y+RADIUS, wall.max.y-RADIUS);
+	if (b->p.y < wall.min.y || b->p.y > wall.max.y) {
+		b->p.y = clamp(b->p.y, wall.min.y, wall.max.y);
 		b->v.y = -b->v.y;
 	}
 }

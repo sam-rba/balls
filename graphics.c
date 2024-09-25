@@ -8,10 +8,13 @@ drawbg(Image *walls, Image *bg) {
 }
 
 Image *
-alloccircle(int fg, int bg) {
+alloccircle(int fg, int bg, uint radius) {
 	Image *m, *fill;
+	uint d;
 
-	m = allocimage(display, Rect(0, 0, 2*RADIUS, 2*RADIUS), RGBA32, 0, bg);
+	d = 2*radius; /* diameter */
+	printf("alloccircle: d=%u\n", d);
+	m = allocimage(display, Rect(0, 0, d, d), RGBA32, 0, bg);
 	if (m == nil)
 		return nil;
 
@@ -21,15 +24,17 @@ alloccircle(int fg, int bg) {
 		return nil;
 	}
 
-	fillellipse(m, Pt(RADIUS, RADIUS), RADIUS, RADIUS, fill, ZP);
+	fillellipse(m, Pt(radius, radius), radius, radius, fill, ZP);
 	freeimage(fill);
 	return m;
 }
 
 void
 drawcircle(Image *m, Point pos) {
+	uint radius;
 	Rectangle r;
 
-	r = Rpt(subpt(pos, Pt(RADIUS, RADIUS)), addpt(pos, Pt(RADIUS, RADIUS)));
+	radius = Dx(m->r)/2;
+	r = Rpt(subpt(pos, Pt(radius, radius)), addpt(pos, Pt(radius, radius)));
 	draw(screen, r, m, nil, ZP);
 }

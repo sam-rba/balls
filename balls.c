@@ -21,7 +21,7 @@ enum {
 	DEFAULT_NBALLS = 3,
 
 	VMAX = 3,
-	MASS = 10,
+	G_PER_KG = 1000,
 
 	FPS = 60,
 	NS_PER_SEC = 1000000000,
@@ -44,6 +44,7 @@ typedef struct {
 } BallArg;
 
 static int ballcolors[] = { DRed, DGreen, DBlue };
+static uint radii[] = { 20, 30, 50 };
 static Rectangle bounds = {{PAD, PAD}, {PAD+WIDTH, PAD+HEIGHT}};
 
 int init(char *label, Mousectl **mctl, Keyboardctl **kctl);
@@ -52,9 +53,11 @@ void spawnballs(int n);
 Channel **allocchans(int nchans, int elsize, int nel);
 void mcopycolskip(Channel *vec[], Channel **matrix[], int n, int col, int skip);
 void vcopyskip(Channel *dst[], Channel *src[], int n, int skip);
-void nooverlapcircles(Point centers[], int n);
+void nooverlapcircles(Point centers[], int n, uint radius);
 Point randptinrect(Rectangle r);
 int randint(int lo, int hi);
+uint maxelem(uint arr[], uint n);
+double mass(uint radius);
 void ball(void *arg);
 void broadcast(Point p, Channel *cs[], int n);
 void frametick(void *arg);
@@ -143,7 +146,7 @@ spawnballs(int n) {
 
 	if ((ps = malloc(n*sizeof(Point))) == nil)
 		sysfatal("failed to allocate position array");
-	nooverlapcircles(ps, n);
+	nooverlapcircles(ps, n, maxelem(radii, NELEMS(radii)));
 
 	if ((cs = malloc(n*sizeof(Channel **))) == nil)
 		sysfatal("failed to allocate channel matrix");
@@ -164,7 +167,8 @@ spawnballs(int n) {
 
 		arg->b.p = ps[i];
 		arg->b.v = V((double) randint(-VMAX, VMAX+1), (double) randint(-VMAX, VMAX+1));
-		arg->b.m = MASS;
+		arg->b.r = radii[randint(0, NELEMS(radii))];
+		arg->b.m = mass(arg->b.r);
 
 		arg->color = ballcolors[randint(0, NELEMS(ballcolors))];
 
@@ -234,14 +238,14 @@ vcopyskip(Channel *dst[], Channel *src[], int n,  int skip) {
 }
 
 void
-nooverlapcircles(Point centers[], int n) {
+nooverlapcircles(Point centers[], int n, uint radius) {
 	int i, j;
 
 	srand(time(0));
 	for (i = 0; i < n; i++) {
-		centers[i] = randptinrect(insetrect(bounds, RADIUS));
+		centers[i] = randptinrect(insetrect(bounds, radius));
 		for (j = 0; j < i; j++)
-			if (iscollision(centers[j], centers[i]))
+			if (iscollision(centers[j], radius, centers[i], radius))
 				break;
 		if (j < i) { /* overlapping */
 			i--;
@@ -260,6 +264,24 @@ randint(int lo, int hi) {
 	return (rand() % (hi-lo)) + lo;
 }
 
+uint
+maxelem(uint arr[], uint n) {
+	uint max;
+
+	if (n == 0)
+		return 0;
+	max = arr[--n];
+	while (n-- > 0)
+		if (arr[n] > max)
+			max = arr[n];
+	return max;
+}
+
+double
+mass(uint radius) {
+	return (double) radius / 10 / G_PER_KG;
+}
+
 void
 ball(void *arg) {
 	BallArg *barg;
@@ -273,8 +295,8 @@ ball(void *arg) {
 	barg = (BallArg *) arg;
 	b = (Ball) barg->b;
 
-	fill = alloccircle(barg->color, DTransparent);
-	erase = alloccircle(BG, DTransparent);
+	fill = alloccircle(barg->color, DTransparent, b.r);
+	erase = alloccircle(BG, DTransparent, b.r);
 	if (fill == nil ||erase == nil)
 		sysfatal("failed to allocate image");
 
