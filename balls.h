@@ -19,6 +19,7 @@ typedef struct {
 	double m; /* mass [kg] */
 } Ball;
 
+Vec vadd(Vec v1, Vec v2);
 Vec vsub(Vec v1, Vec v2);
 Vec vmuls(Vec v, double a);
 Vec vdivs(Vec v, double a);

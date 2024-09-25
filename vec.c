@@ -1,6 +1,11 @@
 #include "balls.h"
 
 Vec
+vadd(Vec v1, Vec v2) {
+	return V(v1.x+v2.x, v1.y+v2.y);
+}
+
+Vec
 vsub(Vec v1, Vec v2) {
 	return V(v1.x-v2.x, v1.y-v2.y);
 }
