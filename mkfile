@@ -3,7 +3,7 @@ LD=9l
 O=o
 LDFLAGS=
 
-OBJ = balls.$O vec.$O collision.$O
+OBJ = balls.$O vec.$O collision.$O graphics.$O
 
 balls: $OBJ
 	$LD -o balls $OBJ $LDFLAGS

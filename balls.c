@@ -48,7 +48,6 @@ static Rectangle bounds = {{PAD, PAD}, {PAD+WIDTH, PAD+HEIGHT}};
 
 int init(char *label, Mousectl **mctl, Keyboardctl **kctl);
 void spawnball(void);
-void drawbg(Image *walls, Image *bg);
 void spawnballs(int n);
 Channel **allocchans(int nchans, int elsize, int nel);
 void mcopycolskip(Channel *vec[], Channel **matrix[], int n, int col, int skip);
@@ -57,8 +56,6 @@ void nooverlapcircles(Point centers[], int n);
 Point randptinrect(Rectangle r);
 int randint(int lo, int hi);
 void ball(void *arg);
-Image *alloccircle(int fg, int bg);
-void drawcircle(Image *m, Point pos);
 void broadcast(Point p, Channel *cs[], int n);
 void frametick(void *arg);
 
@@ -129,13 +126,6 @@ init(char *label, Mousectl **mctl, Keyboardctl **kctl) {
 	if ((*kctl = initkeyboard(nil)) == nil)
 		return 1;
 	return 0;
-}
-
-void
-drawbg(Image *walls, Image *bg) {
-	draw(screen, screen->r, walls, nil, ZP);
-	draw(screen, screen->r, bg, nil, ZP);
-	flushimage(display, Refnone);
 }
 
 void
@@ -312,30 +302,6 @@ ball(void *arg) {
 		oldpos = b.p;
 
 	}	
-}
-
-Image *
-alloccircle(int fg, int bg) {
-	Image *m, *fill
-;
-	m = allocimage(display, Rect(0, 0, 2*RADIUS, 2*RADIUS), RGBA32, 0, bg);
-	if (m == nil)
-		return nil;
-
-	fill = allocimage(display, Rect(0, 0, 1, 1), RGBA32, 1, fg);
-	if (fill == nil) {
-		free(m);
-		return nil;
-	}
-
-	fillellipse(m, Pt(RADIUS, RADIUS), RADIUS, RADIUS, fill, ZP);
-	freeimage(fill);
-	return m;
-}
-
-void
-drawcircle(Image *m, Point pos) {
-	draw(screen, rectaddpt(bounds, subpt(pos, Pt(RADIUS, RADIUS))), m, nil, ZP);
 }
 
 void

@@ -32,6 +32,10 @@ Point ptaddv(Point p, Vec v);
 Vec V(double x, double y);
 Vec Vpt(Point p, Point q);
 
+void drawbg(Image *walls, Image *bg);
+Image *alloccircle(int fg, int bg);
+void drawcircle(Image *m, Point pos);
+
 int iscollision(Point p, Point q);
 void collideball(Ball *b1, const Ball *b2);
 void collidewall(Ball *b, Rectangle wall);
