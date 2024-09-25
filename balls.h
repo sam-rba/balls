@@ -1,5 +1,6 @@
 #include <u.h>
 #include <libc.h>
+#include <stdio.h>
 #include <draw.h>
 #include <cursor.h>
 
@@ -32,3 +33,5 @@ Vec V(double x, double y);
 Vec Vpt(Point p, Point q);
 
 int iscollision(Point p, Point q);
+void collideball(Ball *b1, const Ball *b2);
+void collidewall(Ball *b, Rectangle wall);

@@ -1,6 +1,5 @@
 #include "balls.h"
 
-#include <stdio.h>
 #include <thread.h>
 #include <mouse.h>
 #include <keyboard.h>
@@ -44,8 +43,8 @@ typedef struct {
 	int nothers; /* number of other balls */
 } BallArg;
 
-int ballcolors[] = { DRed, DGreen, DBlue };
-Rectangle bounds = {{PAD, PAD}, {PAD+WIDTH, PAD+HEIGHT}};
+static int ballcolors[] = { DRed, DGreen, DBlue };
+static Rectangle bounds = {{PAD, PAD}, {PAD+WIDTH, PAD+HEIGHT}};
 
 int init(char *label, Mousectl **mctl, Keyboardctl **kctl);
 void spawnball(void);
@@ -60,9 +59,6 @@ int randint(int lo, int hi);
 void ball(void *arg);
 Image *alloccircle(int fg, int bg);
 void drawcircle(Image *m, Point pos);
-int clamp(int v, int lo, int hi);
-int min(int a, int b);
-int max(int a, int b);
 void broadcast(Point p, Channel *cs[], int n);
 void frametick(void *arg);
 
@@ -277,73 +273,43 @@ randint(int lo, int hi) {
 void
 ball(void *arg) {
 	BallArg *barg;
-	Point p, oldp;
-	Vec v;
-	int m;
+	Ball b;
 	Image *fill, *erase;
+	Point oldpos;
 	int i;
 	Ball other;
-	Point midpoint;
-	Vec d, n;
-	double magnitude;
 	int t;
 
 	barg = (BallArg *) arg;
-	p = oldp = barg->b.p;
-	v = barg->b.v;
-	m = barg->b.m;
+	b = (Ball) barg->b;
 
 	fill = alloccircle(barg->color, DTransparent);
 	erase = alloccircle(BG, DTransparent);
 	if (fill == nil ||erase == nil)
 		sysfatal("failed to allocate image");
 
+	oldpos = b.p;
 	for (;;) {
-		v.y += G;
+		b.v.y += G;
 
-		p = ptaddv(p, v);
+		b.p = ptaddv(b.p, b.v);
 
-		printf("(%d,%d) %f %f\n", p.x, p.y, v.x, v.y);
+		printf("(%d,%d) %f %f\n", b.p.x, b.p.y, b.v.x, b.v.y);
 
-		broadcast(p, barg->out, barg->nothers);
+		broadcast(b.p, barg->out, barg->nothers);
 
 		/* check for ball collision */
 		for (i = 0; i < barg->nothers; i++) {
 			recv(barg->in[i], &other);
-			if (iscollision(p, other.p)) {
-				midpoint = divpt(addpt(p, other.p), 2);
-				d = Vpt(other.p, p);
-				p = ptaddv(midpoint, vmuls(unitnorm(d), RADIUS));
-
-				printf("collision (%d,%d), (%d,%d)\n", p.x, p.y, other.p.x, other.p.y);
-
-				printf("oldv: (%2.2f,%2.2f\n", v.x, v.y);
-
-				n = unitnorm(Vpt(other.p, p));
-				magnitude = 2*(vdot(v, n) - vdot(other.v, n)) / (m + other.m);
-
-				printf("n: (%2.2f,%2.2f), magnitude: %2.2f\n", n.x, n.y, magnitude);
-
-				v = vsub(v, vmuls(n, magnitude * m));
-
-				printf("newv: (%2.2f,%2.2f)\n", v.x, v.y);
-			}
+			collideball(&b, &other);
 		}		
 
-		/* check for wall collision */
-		if (p.x < bounds.min.x+RADIUS || p.x > bounds.max.x-RADIUS) {
-			p.x = clamp(p.x, bounds.min.x+RADIUS, bounds.max.x-RADIUS);
-			printf("clamped to %d\n", p.x);
-			v.x = -v.x;
-		}
-		if (p.y < bounds.min.y+RADIUS || p.y > bounds.max.y-RADIUS) {
-			p.y = clamp(p.y, bounds.min.y+RADIUS, bounds.max.y-RADIUS);
-			v.y = -v.y;
-		}		
+		collidewall(&b, bounds);
+
 		recv(barg->frametick, &t);
-		drawcircle(erase, oldp);
-		drawcircle(fill, p);
-		oldp = p;
+		drawcircle(erase, oldpos);
+		drawcircle(fill, b.p);
+		oldpos = b.p;
 
 	}	
 }
@@ -370,21 +336,6 @@ alloccircle(int fg, int bg) {
 void
 drawcircle(Image *m, Point pos) {
 	draw(screen, rectaddpt(bounds, subpt(pos, Pt(RADIUS, RADIUS))), m, nil, ZP);
-}
-
-int
-clamp(int v, int lo, int hi) {
-	return min(hi, max(v, lo));
-}
-
-int
-min(int a, int b) {
-	return (a < b) ? a : b;
-}
-
-int
-max(int a, int b) {
-	return (a > b) ? a : b;
 }
 
 void
