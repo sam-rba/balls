@@ -14,8 +14,8 @@ enum {
 	WALLS = DBlack,
 
 	PAD = 0,
-	WIDTH = 800,
-	HEIGHT=600,
+	WIDTH = 960,
+	HEIGHT=640,
 
 	KEY_QUIT = 'q' ,
 
@@ -24,7 +24,7 @@ enum {
 	VMAX = 3,
 	MASS = 10,
 
-	FPS = 30,
+	FPS = 60,
 	NS_PER_SEC = 1000000000,
 	FRAME_TIME = NS_PER_SEC / FPS,
 	TICK_BUFSIZE = 4,
