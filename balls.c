@@ -59,7 +59,7 @@ int randint(int lo, int hi);
 uint maxelem(uint arr[], uint n);
 double mass(uint radius);
 void ball(void *arg);
-void broadcast(Point p, Channel *cs[], int n);
+void broadcast(Ball b, Channel *cs[], int n);
 void frametick(void *arg);
 
 void
@@ -308,7 +308,7 @@ ball(void *arg) {
 
 		printf("(%d,%d) %f %f\n", b.p.x, b.p.y, b.v.x, b.v.y);
 
-		broadcast(b.p, barg->out, barg->nothers);
+		broadcast(b, barg->out, barg->nothers);
 
 		/* check for ball collision */
 		for (i = 0; i < barg->nothers; i++) {
@@ -327,9 +327,9 @@ ball(void *arg) {
 }
 
 void
-broadcast(Point p, Channel *cs[], int n) {
+broadcast(Ball b, Channel *cs[], int n) {
 	while (n-- > 0)
-		send(cs[n], &p);
+		send(cs[n], &b);
 }
 
 void
