@@ -286,12 +286,10 @@ mass(uint radius) {
 void
 ball(void *arg) {
 	BallArg *barg;
-	Ball b;
-	Image *fill, *erase;
+	Ball b, other;
 	Point oldpos;
-	int i;
-	Ball other;
-	int t;
+	Image *fill, *erase;
+	int i, t;
 
 	barg = (BallArg *) arg;
 	b = (Ball) barg->b;
