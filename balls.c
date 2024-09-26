@@ -12,7 +12,6 @@ enum {
 	BG = DWhite,
 	WALLS = DBlack,
 
-	PAD = 0,
 	WIDTH = 960,
 	HEIGHT=640,
 
@@ -45,7 +44,7 @@ typedef struct {
 
 static int ballcolors[] = { DRed, DGreen, DBlue };
 static uint radii[] = { 20, 30, 50 };
-static Rectangle bounds = {{PAD, PAD}, {PAD+WIDTH, PAD+HEIGHT}};
+static Rectangle bounds = {{0, 0}, {WIDTH, HEIGHT}};
 
 int init(char *label, Mousectl **mctl, Keyboardctl **kctl);
 void spawnball(void);
