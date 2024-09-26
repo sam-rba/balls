@@ -48,7 +48,6 @@ static uint radii[] = { 20, 30, 50 };
 static Rectangle bounds = {{0, 0}, {WIDTH, HEIGHT}};
 
 int init(char *label, Mousectl **mctl, Keyboardctl **kctl);
-void spawnball(void);
 void spawnballs(int n);
 Channel **allocchans(int nchans, int elsize, int nel);
 void mcopycolskip(Channel *vec[], Channel **matrix[], int n, int col, int skip);
