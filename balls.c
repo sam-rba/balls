@@ -184,6 +184,7 @@ spawnballs(int n) {
 
 		arg->nothers = n-1;
 
+		printf("create ball p(%d,%d) v(%f,%f) r(%u) m(%f)\n", arg->b.p.x, arg->b.p.y, arg->b.v.x, arg->b.v.y, arg->b.r, arg->b.m);
 		threadcreate(ball, arg, mainstacksize);
 	}
 

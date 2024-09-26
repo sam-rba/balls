@@ -15,28 +15,26 @@ iscollision(Point p1, uint r1, Point p2, uint r2) {
 
 void
 collideball(Ball *b1, const Ball *b2) {
-	Point midpoint;
-	Vec d, n;
-	double magnitude;
+	Vec n, distv;
+	double dist, coef, mrat;
 
 	if (!iscollision(b1->p, b1->r, b2->p, b2->r))
 		return;
-	midpoint = divpt(addpt(b1->p, b2->p), 2);
-	d = Vpt(b2->p, b1->p);
-	b1->p = ptaddv(midpoint, vmuls(unitnorm(d), b1->r));
 
 	printf("collision (%d,%d), (%d,%d)\n", b1->p.x, b1->p.y, b2->p.x, b2->p.y);
-
 	printf("oldv: (%2.2f,%2.2f\n", b1->v.x, b1->v.y);
+	printf("m1(%f) m2(%f)\n", b1->m, b2->m);
 
 	n = unitnorm(Vpt(b2->p, b1->p));
-	magnitude = 2*(vdot(b1->v, n) - vdot(b2->v, n)) / (b1->m + b2->m);
+	dist = b1->r + b2->r;
+	b1->p = ptaddv(b2->p, vmuls(n, dist));
 
-	printf("n: (%2.2f,%2.2f), magnitude: %2.2f\n", n.x, n.y, magnitude);
+	distv = Vpt(b2->p, b1->p);
+	coef = vdot(vsub(b1->v, b2->v), distv) / (vlen(distv)*vlen(distv));
+	mrat = 2.0 * b2->m / (b1->m + b2->m);
+	b1->v = vsub(b1->v, vmuls(distv, mrat*coef));
 
-	b1->v = vsub(b1->v, vmuls(n, magnitude * b1->m));
-
-	printf("newv: (%2.2f,%2.2f)\n", b1->v.x, b1->v.y);
+	printf("dist(%f,%f) coef(%f) mrat(%f) v(%f,%f)\n", distv.x, distv.y, coef, mrat, b1->v.x, b1->v.y);
 }
 
 void
