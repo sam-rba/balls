@@ -26,9 +26,9 @@ enum {
 	FPS = 60,
 	NS_PER_SEC = 1000000000,
 	FRAME_TIME = NS_PER_SEC / FPS,
-	TICK_BUFSIZE = 4,
+	TICK_BUFSIZE = 1,
 
-	POS_BUFSIZE = 4,
+	BALL_BUFSIZE = 1,
 };
 
 typedef struct {
@@ -156,7 +156,7 @@ spawnballs(int n) {
 		for (j = 0; j < n; j++) {
 			if (j == i)
 				continue;
-			if ((cs[i][j] = chancreate(sizeof(Ball), POS_BUFSIZE)) == nil)
+			if ((cs[i][j] = chancreate(sizeof(Ball), BALL_BUFSIZE)) == nil)
 				sysfatal("failed to create channel");
 		}
 	}
