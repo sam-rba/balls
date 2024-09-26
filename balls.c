@@ -6,7 +6,7 @@
 
 #define NELEMS(arr) (sizeof(arr) / sizeof(arr[0]))
 
-#define G 0.25
+#define G 9.81
 
 enum {
 	BG = DWhite,
@@ -20,6 +20,7 @@ enum {
 	DEFAULT_NBALLS = 3,
 
 	VMAX = 3,
+	MASS_FACTOR = 1,
 	G_PER_KG = 1000,
 
 	FPS = 60,
@@ -279,7 +280,7 @@ maxelem(uint arr[], uint n) {
 
 double
 mass(uint radius) {
-	return (double) radius / 10 / G_PER_KG;
+	return (double) radius / MASS_FACTOR / G_PER_KG;
 }
 
 void
@@ -302,7 +303,7 @@ ball(void *arg) {
 
 	oldpos = b.p;
 	for (;;) {
-		b.v.y += G;
+		b.v.y += b.m * G;
 
 		b.p = ptaddv(b.p, b.v);
 
