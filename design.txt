@@ -1,0 +1,84 @@
+= Multithreaded 2D Bouncing Balls Simulation =
+
+The goal is to simulate and render multiple balls bouncing in a rectangular
+container (the window).  The number of balls is confurable by a command line
+argument at runtime.
+
+# Collisions
+
+When a collision occurs, there are two steps: 1) detect the collision, and 2)
+respond to the collision.
+
+1) Collision detection
+
+Collision between two balls is detected by comparing the distance between
+them to the sum of their radii.  Calculating the distance involves a square
+root operation, but the compution can be simplified by comparing the square
+of both sides of the equation.  I.e. rather than checking
+
+sqrt((x2-x1)^2 + (y2-y1)^2) < (r1+r2)
+
+the formula is simplified using the identity
+
+(a < b) <=> (a^2 < b^2)
+
+to avoid the square root:
+
+(x2-x1)^2 + (y2-y1) < (r1+r2)^2
+
+
+2) Collision response
+
+Once a collision is detected, the reaction of the ball should be calculated.
+Each ball has a position, a velocity, a radius and a mass.  The first step is
+to correct the position so that the two balls don't overlap.  This is done
+by first finding the vector from ball 2 to ball 1, and then normalizing it.
+Then multiply the normal vector by the sum of the radii of the two balls---this
+will be the final distance between the two.  Calculate the final position
+of ball 1 as the endpoint of the aforementioned vector beginning at ball
+2's position.
+
+Once the corrected position of the ball is known, then next step is to
+calculate its velocity after the collision.  Collisions are assumed to
+be perfectly elastic: kinetic energy is conserved.  The final velocity is
+calculated by a sequence of vector operations outlined at the following link:
+
+https://en.wikipedia.org/wiki/Elastic_collision#Two-dimensional_collision_with_two_moving_objects
+
+The "angle-free representation" is used.
+
+# Implementation
+
+The simulation is implemented using the Plan 9 thread and graphics libraries:
+
+https://man.cat-v.org/plan_9/2/thread
+https://man.cat-v.org/plan_9/2/graphics
+
+Each ball is simulated in its own computation thread. With each frame,
+the thread updates the ball's velocity and position, checks for collisions
+with other balls and the edges of the screen, and redraws the ball on the
+screen. Threads communicate the positions, velocities, etc. of their ball
+via "Channels" provided by the thread library.  "A Channel is a buffered or
+unbuffered queue for fixed-size messages." In this case, buffered channels
+are used to send Ball data structures between threads.  Before calculating
+collisions, each ball thread broadcasts its Ball to other threads.  Then, for
+each ball, it receives a Ball from the channel it shares with another thread
+and checks for a collision between its own ball and the ball it just received.
+
+Not only does this provide race-free communication, it also enforces a
+"soft synchronization."  If one thread runs faster than the others, it will
+be forced to synchronize with the others when either its outgoing channel
+fills up or its incoming channel runs dry.
+
+There is also a frame-timing mechanism that keeps the whole simulation
+running at a steady pace.  This is implemented as a "frametick" thread that
+broadcasts "tick" messages to all computation threads at a fixed interval
+(approximately every 16666667 ns.) Each thread waits for this message before
+redrawing its ball on the screen.
+
+There is a single control thread that initializes all of the necessary data
+structures, starts the computation threads, and listens for system events.
+
+The control thread creates the specified number of balls as well as the
+n*(n-1) channels used to communicate between the worker threads. It then
+enters a loop waiting for window resize and keyboard input events.
