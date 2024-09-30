@@ -6,7 +6,8 @@
 
 #define NELEMS(arr) (sizeof(arr) / sizeof(arr[0]))
 
-#define G 9.81
+#define G_FACTOR 15.0
+#define G (9.81/G_FACTOR)
 
 enum {
 	BG = DWhite,
@@ -306,7 +307,7 @@ ball(void *arg) {
 
 	oldpos = b.p;
 	for (;;) {
-		b.v.y += b.m * G;
+		b.v.y += G;
 
 		b.p = ptaddv(b.p, b.v);
 
