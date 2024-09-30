@@ -12,8 +12,8 @@ enum {
 	BG = DWhite,
 	WALLS = DBlack,
 
-	WIDTH = 960,
-	HEIGHT=640,
+	WIDTH = 1280,
+	HEIGHT=720,
 
 	KEY_QUIT = 'q' ,
 
