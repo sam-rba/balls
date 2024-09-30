@@ -20,7 +20,7 @@ enum {
 	DEFAULT_NBALLS = 3,
 
 	VMAX = 3,
-	MASS_FACTOR = 1,
+	MASS_FACTOR = 75,
 	G_PER_KG = 1000,
 
 	FPS = 60,
@@ -57,6 +57,7 @@ Point randptinrect(Rectangle r);
 int randint(int lo, int hi);
 uint maxelem(uint arr[], uint n);
 double mass(uint radius);
+double area(double radius);
 void ball(void *arg);
 void broadcast(Channel *cs[], int n, void *v);
 void frametick(void *arg);
@@ -279,7 +280,12 @@ maxelem(uint arr[], uint n) {
 
 double
 mass(uint radius) {
-	return (double) radius / MASS_FACTOR / G_PER_KG;
+	return area(radius) / MASS_FACTOR / G_PER_KG;
+}
+
+double
+area(double radius) {
+	return M_PI * radius*radius;
 }
 
 void
