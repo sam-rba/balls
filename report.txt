@@ -1,3 +1,6 @@
+COMP 426 assignment 1
+Sam Anthony 40271987
+
 = Multithreaded 2D Bouncing Balls Simulation =
 
 The goal is to simulate and render multiple balls bouncing in a rectangular
