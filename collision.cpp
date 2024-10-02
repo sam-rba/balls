@@ -27,6 +27,34 @@ collideWall(Ball *b, Rectangle wall) {
 	}
 }
 
+void
+collideBall(Ball *b1, Ball *b2) {
+	Point midpt;
+	Vector n, distv;
+	double mrat, coef;
+
+	if (!isCollision(b1->p, b1->r, b2->p, b2->r))
+		return;
+
+	/* set position of collision */
+	midpt = ptDivS(addPt(b1->p, b2->p), 2);
+	n = unitNorm(VecPt(b1->p, b2->p));
+	b1->p = ptSubVec(midpt, vecMulS(n, b1->r));
+	b2->p = ptAddVec(midpt, vecMulS(n, b2->r));
+
+	/* reaction velocity */
+
+	mrat = 2.0 * b2->m / (b1->m + b2->m);
+	distv = VecPt(b2->p, b1->p);
+	coef = vecDot(subVec(b1->v, b2->v), distv) / (vecLen(distv)*vecLen(distv));
+	b1->v = subVec(b1->v, vecMulS(distv, mrat*coef));
+
+	mrat = 2.0 * b1->m / (b1->m + b2->m);
+	distv = VecPt(b1->p, b2->p);
+	coef = vecDot(subVec(b2->v, b1->v), distv) / (vecLen(distv)*vecLen(distv));
+	b2->v = subVec(b2->v, vecMulS(distv, mrat*coef));
+}
+
 static double
 clamp(double v, double lo, double hi) {
 	return min(hi, max(v, lo));

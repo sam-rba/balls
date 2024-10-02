@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define VMAX_INIT 0.15
+#define VMAX_INIT 0.05
 	/* max initial velocity [m/s] */
 #define RMIN 0.05
 #define RMAX 0.10
@@ -183,9 +183,14 @@ volume(double radius) {
 
 void
 animate(int v) {
-	for (Ball& ball : balls) {
-		ball.p = ptAddVec(ball.p, ball.v);
-		collideWall(&ball, bounds);
+	size_t i, j;
+
+	/* TODO: parallel */
+	for (i = 0; i < balls.size(); i++) {
+		for (j = i+1; j < balls.size(); j++)
+			collideBall(&balls[i], &balls[j]);
+		balls[i].p = ptAddVec(balls[i].p, balls[i].v);
+		collideWall(&balls[i], bounds);
 	}
 
 	display();
