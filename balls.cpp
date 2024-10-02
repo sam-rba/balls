@@ -8,12 +8,15 @@
 using namespace std;
 
 #define VMAX_INIT 0.05
-	/* max initial velocity [m/s] */
+	/* max initial velocity [m/frame] */
 #define RMIN 0.05
 #define RMAX 0.10
 	/* min/max radius [m] */
 #define DENSITY 1500.0
 	/* density of ball [kg/m^3] */
+#define G (9.81/FPS/G_FACTOR)
+	/* acceleration of gravity [m/(s*frame)] */
+#define G_FACTOR 25.0
 
 enum {
 	WIDTH = 800,
@@ -191,6 +194,7 @@ animate(int v) {
 	for (i = 0; i < balls.size(); i++) {
 		for (j = i+1; j < balls.size(); j++)
 			collideBall(&balls[i], &balls[j]);
+		balls[i].v.y -= G;
 		balls[i].p = ptAddVec(balls[i].p, balls[i].v);
 		collideWall(&balls[i], bounds);
 	}
