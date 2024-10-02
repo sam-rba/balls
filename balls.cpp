@@ -31,13 +31,13 @@ enum {
 
 void keyboard(unsigned char key, int x, int y);
 void display(void);
-void drawBg(void);
+void drawBackground(void);
 void drawCircle(double radius, Point p);
 void reshape(int w, int h);
 vector<Ball> makeBalls(unsigned int n);
 vector<Point> noOverlapCircles(unsigned int n);
 double mass(double radius);
-double volumeSphere(double radius);
+double volume(double radius);
 void animate(int v);
 
 const static Rectangle bounds = {{-1.5, -1.0}, {1.5, 1.0}};
@@ -74,7 +74,7 @@ void
 display(void) {
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
-	drawBg();
+	drawBackground();
 	for (Ball b : balls)
 		drawCircle(b.r, b.p);
 
@@ -82,7 +82,7 @@ display(void) {
 }
 
 void
-drawBg(void) {
+drawBackground(void) {
 	glColor3f(1, 1, 1);
 	glBegin(GL_QUADS);
 		glVertex2f(bounds.min.x, bounds.min.y);
@@ -124,6 +124,7 @@ reshape(int w, int h) {
 	glMatrixMode(GL_MODELVIEW);
 }
 
+/* return n-length vector of Balls with random attributes */
 vector<Ball>
 makeBalls(unsigned int n) {
 	vector<Ball> balls(n);
@@ -145,6 +146,7 @@ makeBalls(unsigned int n) {
 	return balls;
 }
 
+/* return n-length vector of positions of non-overlapping circles with radius RMAX within the bounds */
 vector<Point>
 noOverlapCircles(unsigned int n) {
 	vector<Point> ps(n);
@@ -170,12 +172,12 @@ noOverlapCircles(unsigned int n) {
 /* mass [kg] of ball as function of radius [m] */
 double
 mass(double radius) {
-	return volumeSphere(radius) * DENSITY;
+	return volume(radius) * DENSITY;
 }
 
-/* volume [m^3] of sphere as function of radius [m] */
+/* volume [m^3] of ball as function of radius [m] */
 double
-volumeSphere(double radius) {
+volume(double radius) {
 	return 4.0 * M_PI * radius*radius*radius / 3.0;
 }
 
