@@ -1,10 +1,18 @@
-#include <stdlib.h>
+#include <iostream>
 #include <GL/glut.h>
 #include <oneapi/tbb.h>
 
 #include "balls.h"
 
 using namespace std;
+
+#define VMAX_INIT 0.15
+	/* max initial velocity [m/s] */
+#define RMIN 0.05
+#define RMAX 0.10
+	/* min/max radius [m] */
+#define DENSITY 1500.0
+	/* density of ball [kg/m^3] */
 
 enum {
 	WIDTH = 800,
@@ -17,6 +25,8 @@ enum {
 	FPS = 60,
 	MS_PER_S = 1000,
 	FRAME_TIME_MS = MS_PER_S / FPS,
+
+	NBALLS_DEFAULT = 3,
 };
 
 void keyboard(unsigned char key, int x, int y);
@@ -24,10 +34,15 @@ void display(void);
 void drawBg(void);
 void drawCircle(double radius, Point p);
 void reshape(int w, int h);
+vector<Ball> makeBalls(unsigned int n);
+vector<Point> noOverlapCircles(unsigned int n);
+double mass(double radius);
+double volumeSphere(double radius);
 void animate(int v);
 
 const static Rectangle bounds = {{-1.5, -1.0}, {1.5, 1.0}};
-static Ball ball = {{0.25, 0.25}, {0.25, 0.25}, 0.200, 0.25};
+
+static vector<Ball> balls;
 
 int
 main(int argc, char *argv[]) {
@@ -39,6 +54,9 @@ main(int argc, char *argv[]) {
 	glutKeyboardFunc(keyboard);
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
+
+	balls = makeBalls(NBALLS_DEFAULT);
+
 	glutTimerFunc(FRAME_TIME_MS, animate, 0);
 
 	glutMainLoop();
@@ -57,7 +75,8 @@ display(void) {
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
 	drawBg();
-	drawCircle(ball.r, ball.p);
+	for (Ball b : balls)
+		drawCircle(b.r, b.p);
 
 	glutSwapBuffers();
 }
@@ -105,11 +124,67 @@ reshape(int w, int h) {
 	glMatrixMode(GL_MODELVIEW);
 }
 
+vector<Ball>
+makeBalls(unsigned int n) {
+	vector<Ball> balls(n);
+	vector<Point> ps = noOverlapCircles(n);
+	unsigned int i;
+	
+	srand(time(0));
+	for (i = 0; i < n; i++) {
+		cout << "Creating ball " << i << "\n";
+		balls[i].p = ps[i];
+
+		balls[i].v.x = randDouble(-VMAX_INIT, VMAX_INIT);
+		balls[i].v.y = randDouble(-VMAX_INIT, VMAX_INIT);
+
+		balls[i].r = randDouble(RMIN, RMAX);
+
+		balls[i].m = mass(balls[i].r);
+	}
+	return balls;
+}
+
+vector<Point>
+noOverlapCircles(unsigned int n) {
+	vector<Point> ps(n);
+	Rectangle r;
+	unsigned int i, j;
+
+	srand(time(0));
+	r = insetRect(bounds, RMAX);
+	for (i = 0; i < n; i++) {
+		cout << "Create non-overlapping circle " << i << "\n";
+		ps[i] = randPtInRect(r);
+		for (j = 0; j < i; j++) /* TODO: parallel reduce */
+			if (isCollision(ps[j], RMAX, ps[i], RMAX))
+				break;
+		if (j < i) { /* overlapping */
+			i--;
+			continue;
+		}
+	}
+	return ps;
+}
+
+/* mass [kg] of ball as function of radius [m] */
+double
+mass(double radius) {
+	return volumeSphere(radius) * DENSITY;
+}
+
+/* volume [m^3] of sphere as function of radius [m] */
+double
+volumeSphere(double radius) {
+	return 4.0 * M_PI * radius*radius*radius / 3.0;
+}
+
 void
 animate(int v) {
-	ball.p = ptAddVec(ball.p, ball.v);
-
-	collideWall(&ball, bounds);
+	for (Ball& ball : balls) {
+		ball.p = ptAddVec(ball.p, ball.v);
+		collideWall(&ball, bounds);
+	}
 
 	display();
 	glutTimerFunc(FRAME_TIME_MS, animate, 0);
