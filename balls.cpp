@@ -33,13 +33,14 @@ enum {
 void keyboard(unsigned char key, int x, int y);
 void display(void);
 void drawBackground(void);
-void drawCircle(double radius, Point p);
+void drawCircle(double radius, Point p, Color color);
 void reshape(int w, int h);
 vector<Ball> makeBalls(unsigned int n);
 vector<Point> noOverlapCircles(unsigned int n);
 double mass(double radius);
 double volume(double radius);
 void animate(int v);
+Color randColor(void);
 
 const static Rectangle bounds = {{-1.5, -1.0}, {1.5, 1.0}};
 
@@ -77,7 +78,7 @@ display(void) {
 	glClear(GL_COLOR_BUFFER_BIT);
 	drawBackground();
 	for (Ball b : balls)
-		drawCircle(b.r, b.p);
+		drawCircle(b.r, b.p, b.color);
 
 	glutSwapBuffers();
 }
@@ -94,11 +95,11 @@ drawBackground(void) {
 }
 
 void
-drawCircle(double radius, Point p) {
+drawCircle(double radius, Point p, Color color) {
 	int i;
 	double theta, x, y;
 
-	glColor3f(0.1, 0.6, 0.8);
+	glColor3f(color.r, color.g, color.b);
 	glBegin(GL_TRIANGLE_FAN);
 		glVertex2f(p.x, p.y);
 		for (i = 0; i <= CIRCLE_SEGS; i++) {
@@ -142,6 +143,8 @@ makeBalls(unsigned int n) {
 		balls[i].r = randDouble(RMIN, RMAX);
 
 		balls[i].m = mass(balls[i].r);
+
+		balls[i].color = randColor();
 	}
 	return balls;
 }
@@ -209,4 +212,14 @@ randDouble(double lo, double hi) {
 	r = (double) rand() / (double) RAND_MAX;
 	diff = hi - lo;
 	return lo + r*diff;
+}
+
+Color
+randColor(void) {
+	Color color;
+
+	color.r = randDouble(0, 1);
+	color.g = randDouble(0, 1);
+	color.b = randDouble(0, 1);
+	return color;
 }

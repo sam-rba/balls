@@ -11,10 +11,15 @@ typedef struct {
 } Vector;
 
 typedef struct {
+	float r, g, b;
+} Color;
+
+typedef struct {
 	Point p; /* position [m] */
 	Vector v; /* velocity [m/s] */
 	double r; /* radius [m] */
 	double m; /* mass [kg] */
+	Color color;
 } Ball;
 
 Point addPt(Point p, Point q);
