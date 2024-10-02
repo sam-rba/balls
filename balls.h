@@ -1,5 +1,3 @@
-#include <stdlib.h>
-
 typedef struct {
 	double x, y;
 } Point;
@@ -26,6 +24,8 @@ Point ptSubVec(Point p, Vector v);
 Point ptMulS(Point p, double s);
 Point ptDivS(Point p, double s);
 Point Pt(double x, double y);
+Rectangle insetRect(Rectangle r, double n);
+Point randPtInRect(Rectangle r);
 
 Vector addVec(Vector v1, Vector v2);
 Vector subVec(Vector v1, Vector v2);
@@ -36,9 +36,6 @@ Vector unitNorm(Vector v);
 double vecLen(Vector v);
 Vector Vec(double x, double y);
 Vector VecPt(Point p, Point q);
-
-Rectangle insetRect(Rectangle r, double n);
-Point randPtInRect(Rectangle r);
 
 int isCollision(Point p1, double r1, Point p2, double r2);
 void collideWall(Ball *b, Rectangle wall);

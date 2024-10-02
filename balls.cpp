@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <iostream>
 #include <GL/glut.h>
 #include <oneapi/tbb.h>
@@ -131,7 +132,6 @@ makeBalls(unsigned int n) {
 	vector<Point> ps = noOverlapCircles(n);
 	unsigned int i;
 	
-	srand(time(0));
 	for (i = 0; i < n; i++) {
 		cout << "Creating ball " << i << "\n";
 		balls[i].p = ps[i];
@@ -153,7 +153,6 @@ noOverlapCircles(unsigned int n) {
 	Rectangle r;
 	unsigned int i, j;
 
-	srand(time(0));
 	r = insetRect(bounds, RMAX);
 	for (i = 0; i < n; i++) {
 		cout << "Create non-overlapping circle " << i << "\n";
@@ -195,4 +194,19 @@ animate(int v) {
 
 	display();
 	glutTimerFunc(FRAME_TIME_MS, animate, 0);
+}
+
+double
+randDouble(double lo, double hi) {
+	double r, diff;
+	static int isInitialized = 0;
+
+	if (!isInitialized) { /* first call */
+		srand(time(0));
+		isInitialized = 1;
+	}
+
+	r = (double) rand() / (double) RAND_MAX;
+	diff = hi - lo;
+	return lo + r*diff;
 }
