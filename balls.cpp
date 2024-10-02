@@ -14,9 +14,8 @@ using namespace std;
 	/* min/max radius [m] */
 #define DENSITY 1500.0
 	/* density of ball [kg/m^3] */
-#define G (9.81/FPS/G_FACTOR)
-	/* acceleration of gravity [m/(s*frame)] */
-#define G_FACTOR 25.0
+#define G (9.81/FPS/FPS)
+	/* acceleration of gravity [m/(frame*frame)] */
 
 enum {
 	WIDTH = 800,
