@@ -41,5 +41,4 @@ int isCollision(Point p1, double r1, Point p2, double r2);
 void collideWall(Ball *b, Rectangle wall);
 void collideBall(Ball *b1, Ball *b2);
 
-int randInt(int lo, int hi);
 double randDouble(double lo, double hi);
