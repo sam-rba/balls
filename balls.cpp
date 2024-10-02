@@ -41,8 +41,6 @@ main(int argc, char *argv[]) {
 	glutReshapeFunc(reshape);
 	glutTimerFunc(FRAME_TIME_MS, animate, 0);
 
-	glClearColor(1.0, 1.0, 1.0, 1.0);
-
 	glutMainLoop();
 
 	return 1;
