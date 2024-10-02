@@ -2,27 +2,32 @@
 #include <GL/glut.h>
 #include <oneapi/tbb.h>
 
+#include "balls.h"
+
 using namespace std;
 
-enum window { WIDTH = 800, HEIGHT = 600 };
-enum keys { KEY_QUIT = 'q' };
-enum { CIRCLE_SEGS = 32 };
+enum {
+	WIDTH = 800,
+	HEIGHT = 600,
 
-typedef struct {
-	double x, y;
-} Point;
+	KEY_QUIT = 'q',
 
-typedef struct {
-	Point min, max;
-} Rectangle;
+	CIRCLE_SEGS = 32,
+
+	FPS = 60,
+	MS_PER_S = 1000,
+	FRAME_TIME_MS = MS_PER_S / FPS,
+};
 
 void keyboard(unsigned char key, int x, int y);
 void display(void);
 void drawBg(void);
 void drawCircle(double radius, Point p);
 void reshape(int w, int h);
+void animate(int v);
 
 const static Rectangle bounds = {{-1.5, -1.0}, {1.5, 1.0}};
+static Ball ball = {{0.25, 0.25}, {0.25, 0.25}, 0.200, 0.25};
 
 int
 main(int argc, char *argv[]) {
@@ -34,6 +39,7 @@ main(int argc, char *argv[]) {
 	glutKeyboardFunc(keyboard);
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
+	glutTimerFunc(FRAME_TIME_MS, animate, 0);
 
 	glClearColor(1.0, 1.0, 1.0, 1.0);
 
@@ -50,12 +56,10 @@ keyboard(unsigned char key, int x, int y) {
 
 void
 display(void) {
-	static Point p = {0.35, 0.35};
-
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
 	drawBg();
-	drawCircle(0.25, p);
+	drawCircle(ball.r, ball.p);
 
 	glutSwapBuffers();
 }
@@ -101,4 +105,30 @@ reshape(int w, int h) {
 	else
 		glOrtho(-1, 1, -1.0/ratio, 1.0/ratio, -1, 1);
 	glMatrixMode(GL_MODELVIEW);
+}
+
+void
+animate(int v) {
+	ball.p = ptAddVec(ball.p, ball.v);
+
+	collideWall(&ball, bounds);
+
+	display();
+	glutTimerFunc(FRAME_TIME_MS, animate, 0);
+}
+
+Point
+ptAddVec(Point p, Vector v) {
+	p.x += v.x;
+	p.y += v.y;
+	return p;
+}
+
+Rectangle
+insetRect(Rectangle r, double n) {
+	r.min.x += n;
+	r.min.y += n;
+	r.max.x -= n;
+	r.max.y -= n;
+	return r;
 }
