@@ -1,5 +1,7 @@
 #include "balls.h"
 
+static void setPosition(Ball *b1, Ball *b2);
+static Vector reaction(Ball b1, Ball b2);
 static double clamp(double v, double lo, double hi);
 static double min(double a, double b);
 static double max(double a, double b);
@@ -29,30 +31,41 @@ collideWall(Ball *b, Rectangle wall) {
 
 void
 collideBall(Ball *b1, Ball *b2) {
-	Point midpt;
-	Vector n, distv;
-	double mrat, coef;
+	Vector v1, v2;
 
 	if (!isCollision(b1->p, b1->r, b2->p, b2->r))
 		return;
 
-	/* set position of collision */
-	midpt = ptDivS(addPt(b1->p, b2->p), 2);
+	setPosition(b1, b2);
+
+	v1 = reaction(*b1, *b2);
+	v2 = reaction(*b2, *b1);
+	b1->v = v1;
+	b2->v = v2;
+}
+
+/* set the positions of b1 and b2 at the moment of collsion */
+static void
+setPosition(Ball *b1, Ball *b2) {
+	Point mid;
+	Vector n;
+
+	mid = ptDivS(addPt(b1->p, b2->p), 2);
 	n = unitNorm(VecPt(b1->p, b2->p));
-	b1->p = ptSubVec(midpt, vecMulS(n, b1->r));
-	b2->p = ptAddVec(midpt, vecMulS(n, b2->r));
+	b1->p = ptSubVec(mid, vecMulS(n, b1->r));
+	b2->p = ptAddVec(mid, vecMulS(n, b2->r));
+}
 
-	/* reaction velocity */
+/* return the velocity of b1 after colliding with b2 */
+static Vector
+reaction(Ball b1, Ball b2) {
+	double mrat, coef;
+	Vector distv;
 
-	mrat = 2.0 * b2->m / (b1->m + b2->m);
-	distv = VecPt(b2->p, b1->p);
-	coef = vecDot(subVec(b1->v, b2->v), distv) / (vecLen(distv)*vecLen(distv));
-	b1->v = subVec(b1->v, vecMulS(distv, mrat*coef));
-
-	mrat = 2.0 * b1->m / (b1->m + b2->m);
-	distv = VecPt(b1->p, b2->p);
-	coef = vecDot(subVec(b2->v, b1->v), distv) / (vecLen(distv)*vecLen(distv));
-	b2->v = subVec(b2->v, vecMulS(distv, mrat*coef));
+	mrat = 2.0 * b2.m / (b1.m + b2.m);
+	distv = VecPt(b2.p, b1.p);
+	coef = vecDot(subVec(b1.v, b2.v), distv) / (vecLen(distv)*vecLen(distv));
+	return subVec(b1.v, vecMulS(distv, mrat*coef));
 }
 
 static double

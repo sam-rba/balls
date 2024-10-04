@@ -190,11 +190,15 @@ animate(int v) {
 	size_t i, j;
 
 	/* TODO: parallel */
+	for (Ball &ball : balls) {
+		ball.v.y -=G;
+		ball.p = ptAddVec(ball.p, ball.v);
+	}
+
+	/* TODO: parallel */
 	for (i = 0; i < balls.size(); i++) {
 		for (j = i+1; j < balls.size(); j++)
 			collideBall(&balls[i], &balls[j]);
-		balls[i].v.y -= G;
-		balls[i].p = ptAddVec(balls[i].p, balls[i].v);
 		collideWall(&balls[i], bounds);
 	}
 
