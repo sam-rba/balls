@@ -1,5 +1,8 @@
 #include "balls.h"
 
+#define EPSILON 1e-7
+	/* account for floating-point error when testing for collision */
+
 static void setPosition(Ball *b1, Ball *b2);
 static Vector reaction(Ball b1, Ball b2);
 static double clamp(double v, double lo, double hi);
@@ -8,16 +11,17 @@ static double max(double a, double b);
 
 int
 isCollision(Point p1, double r1, Point p2, double r2) {
-	double dx, dy;
+	double dx, dy, rhs;
 
 	dx = p1.x - p2.x;
 	dy = p1.y - p2.y;
-	return (dx*dx + dy*dy) <= (r1+r2)*(r1+r2);
+	rhs = r1 + r2 + EPSILON;
+	return (dx*dx + dy*dy) <= rhs*rhs;
 }
 
 void
 collideWall(Ball *b, Rectangle wall) {
-	wall = insetRect(wall, b->r);
+	wall = insetRect(wall, b->r + EPSILON);
 
 	if (b->p.x < wall.min.x || b->p.x > wall.max.x) {
 		b->p.x = clamp(b->p.x, wall.min.x, wall.max.x);
@@ -52,8 +56,8 @@ setPosition(Ball *b1, Ball *b2) {
 
 	mid = ptDivS(addPt(b1->p, b2->p), 2);
 	n = unitNorm(VecPt(b1->p, b2->p));
-	b1->p = ptSubVec(mid, vecMulS(n, b1->r));
-	b2->p = ptAddVec(mid, vecMulS(n, b2->r));
+	b1->p = ptSubVec(mid, vecMulS(n, b1->r + EPSILON));
+	b2->p = ptAddVec(mid, vecMulS(n, b2->r + EPSILON));
 }
 
 /* return the velocity of b1 after colliding with b2 */
