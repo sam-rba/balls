@@ -6,6 +6,7 @@
 #include "balls.h"
 
 using namespace std;
+using namespace oneapi::tbb;
 
 #define VMAX_INIT 0.05
 	/* max initial velocity [m/frame] */
@@ -142,22 +143,17 @@ reshape(int w, int h) {
 vector<Ball>
 makeBalls(unsigned int n) {
 	vector<Ball> balls(n);
-	vector<Point> ps = noOverlapCircles(n);
-	unsigned int i;
+	vector<Point> positions = noOverlapCircles(n);
 	
-	for (i = 0; i < n; i++) {
+	parallel_for(size_t(0), balls.size(), [&balls, positions] (size_t i) {
 		cout << "Creating ball " << i << "\n";
-		balls[i].p = ps[i];
-
+		balls[i].p = positions[i];
 		balls[i].v.x = randDouble(-VMAX_INIT, VMAX_INIT);
 		balls[i].v.y = randDouble(-VMAX_INIT, VMAX_INIT);
-
 		balls[i].r = randDouble(RMIN, RMAX);
-
 		balls[i].m = mass(balls[i].r);
-
 		balls[i].color = randColor();
-	}
+	});
 	return balls;
 }
 
