@@ -50,6 +50,8 @@ static vector<Ball> balls;
 
 int
 main(int argc, char *argv[]) {
+	int nballs;
+
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowSize(WIDTH, HEIGHT);
@@ -59,7 +61,15 @@ main(int argc, char *argv[]) {
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
 
-	balls = makeBalls(NBALLS_DEFAULT);
+	nballs = NBALLS_DEFAULT;
+	if (argc > 1) {
+		if (sscanf(argv[1], "%d", &nballs) != 1 || nballs < 1) {
+			printf("usage: balls [number of balls]\n");
+			return 1;
+		}
+	}
+
+	balls = makeBalls(nballs);
 
 	glutTimerFunc(FRAME_TIME_MS, animate, 0);
 
