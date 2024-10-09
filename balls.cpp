@@ -210,9 +210,9 @@ animate(int v) {
 		});
 	}
 
-	/* TODO: parallel */
-	for (Ball *ball : balls)
-		collideWall(ball, bounds);
+	parallel_for(size_t(0), balls.size(), [] (size_t i) {
+		collideWall(balls[i], bounds);
+	});
 
 	display();
 	glutTimerFunc(FRAME_TIME_MS, animate, 0);
