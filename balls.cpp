@@ -1,6 +1,6 @@
 #include "balls.h"
 
-#define VMAX_INIT 0.05
+#define VMAX_INIT 0.1
 	/* max initial velocity [m/frame] */
 #define RMIN 0.05
 #define RMAX 0.10
