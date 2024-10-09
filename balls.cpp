@@ -198,18 +198,20 @@ volume(double radius) {
 
 void
 animate(int v) {
-	/* TODO: parallel */
-	for (Ball *ball : balls) {
-		ball->v.y -=G;
-		ball->p = ptAddVec(ball->p, ball->v);
-	}
+	/* Update position. */
+	parallel_for(size_t(0), balls.size(), [] (size_t i) {
+		balls[i]->v.y -=G;
+		balls[i]->p = ptAddVec(balls[i]->p, balls[i]->v);
+	});
 
+	/* Collide with balls. */
 	for (vector<Collision> cell : collisionPartition) {
 		parallel_for(size_t(0), cell.size(), [cell] (size_t i) {
 			collideBall(cell[i].b1, cell[i].b2);
 		});
 	}
 
+	/* Collide with walls. */
 	parallel_for(size_t(0), balls.size(), [] (size_t i) {
 		collideWall(balls[i], bounds);
 	});
