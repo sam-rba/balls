@@ -56,8 +56,3 @@ insetRect(Rectangle r, double n) {
 	r.max.y -= n;
 	return r;
 }
-
-Point
-randPtInRect(Rectangle r) {
-	return Pt(randDouble(r.min.x, r.max.x), randDouble(r.min.y, r.max.y));
-}

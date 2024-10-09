@@ -63,7 +63,6 @@ Point ptMulS(Point p, double s);
 Point ptDivS(Point p, double s);
 Point Pt(double x, double y);
 Rectangle insetRect(Rectangle r, double n);
-Point randPtInRect(Rectangle r);
 
 Vector addVec(Vector v1, Vector v2);
 Vector subVec(Vector v1, Vector v2);
@@ -80,3 +79,5 @@ void collideWall(Ball *b, Rectangle wall);
 void collideBall(Ball *b1, Ball *b2);
 
 double randDouble(double lo, double hi);
+Color randColor(void);
+Point randPtInRect(Rectangle r);

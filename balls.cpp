@@ -35,7 +35,6 @@ vector<Point> noOverlapCircles(unsigned int n);
 double mass(double radius);
 double volume(double radius);
 void animate(int v);
-Color randColor(void);
 
 const static Rectangle bounds = {{-1.5, -1.0}, {1.5, 1.0}};
 
@@ -216,29 +215,4 @@ animate(int v) {
 
 	display();
 	glutTimerFunc(FRAME_TIME_MS, animate, 0);
-}
-
-double
-randDouble(double lo, double hi) {
-	double r, diff;
-	static int isInitialized = 0;
-
-	if (!isInitialized) { /* first call */
-		srand(time(0));
-		isInitialized = 1;
-	}
-
-	r = (double) rand() / (double) RAND_MAX;
-	diff = hi - lo;
-	return lo + r*diff;
-}
-
-Color
-randColor(void) {
-	Color color;
-
-	color.r = randDouble(0, 1);
-	color.g = randDouble(0, 1);
-	color.b = randDouble(0, 1);
-	return color;
 }
