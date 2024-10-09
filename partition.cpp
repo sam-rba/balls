@@ -4,35 +4,31 @@ static vector<Collision> completeGraph(vector<Ball *> balls);
 static vector<Collision> matching(vector<Collision> edges);
 static vector<Collision> diff(vector<Collision> a, vector<Collision> b);
 
-
-
+/*
+ * Partition the set of all possible collisions between balls into chunks that
+ * can be computed concurrently. Collisions within a cell of the partition can
+ * run concurrently. Cells must run sequentially.
+ */
 vector<vector<Collision>>
 partitionCollisions(vector<Ball *> balls) {
-	vector<vector<Collision>> layers;
+	vector<vector<Collision>> partition;
 
-	vector<Collision> collisions = completeGraph(balls);
-	while (!collisions.empty()) {
-		cout << "\nadd layer\n";
-		cout << "layers.size(): " << layers.size() << "\n";
+	vector<Collision> edges = completeGraph(balls);
+	while (!edges.empty()) {
+		vector<Collision> cell = matching(edges); /* collisions can run concurrently if they don't share any vertices (balls) */
 
-		vector<Collision> layerCollisions = matching(collisions);
-		cout << "layer collisions: ";
-		for (Collision c : layerCollisions)
+		cout << "cell collisions: ";
+		for (Collision c : cell)
 			cout << c << " ";
 		cout << "\n";
-		collisions = diff(collisions, layerCollisions);
 
-		vector<Collision> thisLayer;
-		for (Collision c : layerCollisions) {
-			cout << "create node with " << c << "\n";
-			thisLayer.push_back(c);
-		}
-		cout << "thisLayer.size(): " << thisLayer.size() << "\n";
-		layers.push_back(thisLayer);
+		edges = diff(edges, cell);
+		partition.push_back(cell);
 	}
-	return layers;
+	return partition;
 }
 
+/* Construct a complete graph on a set of balls (nodes) where collisions are edges. */
 static vector<Collision>
 completeGraph(vector<Ball *> balls) {
 	vector<Collision> edges;
@@ -44,6 +40,7 @@ completeGraph(vector<Ball *> balls) {
 	return edges;
 }
 
+/* Find an independent edge set. Two edges are independent if they don't share any vertices. */
 static vector<Collision>
 matching(vector<Collision> edges) {
 	vector<Collision> matching;
@@ -59,6 +56,7 @@ matching(vector<Collision> edges) {
 	return matching;
 }
 
+/* Difference of sets. */
 static vector<Collision>
 diff(vector<Collision> a, vector<Collision> b) {
 	vector<Collision> diff;
