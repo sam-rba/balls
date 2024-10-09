@@ -3,11 +3,9 @@
 #include <math.h>
 #include <GL/glut.h>
 #include <oneapi/tbb.h>
-#include <oneapi/tbb/flow_graph.h>
 
 using namespace std;
 using namespace oneapi::tbb;
-using namespace oneapi::tbb::flow;
 
 typedef struct {
 	double x, y;
