@@ -4,6 +4,8 @@ static vector<Collision> completeGraph(vector<Ball *> balls);
 static vector<Collision> matching(vector<Collision> edges);
 static vector<Collision> diff(vector<Collision> a, vector<Collision> b);
 
+
+
 vector<vector<Collision>>
 partitionCollisions(vector<Ball *> balls) {
 	vector<vector<Collision>> layers;

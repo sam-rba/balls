@@ -33,9 +33,6 @@ typedef struct {
 	Color color;
 } Ball;
 
-typedef continue_node<continue_msg> node_t;
-typedef const continue_msg & msg_t;
-
 class Collision {
 public:
 	Ball *b1, *b2;
@@ -53,20 +50,9 @@ public:
 		return a.b1 == b.b1 && a.b2 == b.b2;
 	}
 
-	friend ostream &operator<<(ostream& os, Collision const & c) {
+	friend ostream& operator<<(ostream& os, Collision const & c) {
 		return os << "(" << c.b1 << ", " << c.b2 << ")";
 	}
-};
-
-class CollisionGraph {
-private:
-	graph g;
-	node_t root;
-	vector<vector<reference_wrapper<node_t>>> layers;
-
-public:
-	CollisionGraph(void);
-	void run();
 };
 
 vector<vector<Collision>> partitionCollisions(vector<Ball *> balls);
