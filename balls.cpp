@@ -40,7 +40,7 @@ Color randColor(void);
 const static Rectangle bounds = {{-1.5, -1.0}, {1.5, 1.0}};
 
 vector<Ball *> balls;
-vector<vector<Collision>> collisions;
+vector<vector<Collision>> collisionPartition;
 
 int
 main(int argc, char *argv[]) {
@@ -64,7 +64,7 @@ main(int argc, char *argv[]) {
 	}
 
 	balls = makeBalls(nballs);
-	collisions = partitionCollisions(balls);
+	collisionPartition = partitionCollisions(balls);
 
 	glutTimerFunc(FRAME_TIME_MS, animate, 0);
 
@@ -84,6 +84,7 @@ display(void) {
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
 	drawBackground();
+	/* TODO: parallel */
 	for (const Ball *b : balls)
 		drawCircle(b->r, b->p, b->color);
 
@@ -141,6 +142,7 @@ makeBalls(int n) {
 	vector<Point> positions = noOverlapCircles(n);
 	
 	vector<Ball *> balls(n);
+	/* TODO: parallel */
 	for(i = 0; i < balls.size(); i++) {
 		cout << "Creating ball " << i << "\n";
 		if ((balls[i] = (Ball *) malloc(sizeof(Ball))) == NULL) {
@@ -202,13 +204,13 @@ animate(int v) {
 		ball->p = ptAddVec(ball->p, ball->v);
 	}
 
-	for (vector<Collision> layer : collisions) {
-		/* TODO: parallelize */
-		for (Collision c : layer) {
-			collideBall(c.b1, c.b2);
-		}
+	for (vector<Collision> cell : collisionPartition) {
+		parallel_for(size_t(0), cell.size(), [cell] (size_t i) {
+			collideBall(cell[i].b1, cell[i].b2);
+		});
 	}
 
+	/* TODO: parallel */
 	for (Ball *ball : balls)
 		collideWall(ball, bounds);
 
