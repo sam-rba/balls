@@ -2,7 +2,7 @@ CC = g++
 CFLAGS = -Wall -pedantic
 LDFLAGS = -ltbb -lglut -lGLU -lGL
 
-balls: balls.o collision.o point.o vec.o
+balls: balls.o collision.o point.o vec.o layers.o
 	${CC} -o $@ $^ ${LDFLAGS}
 	@echo done
 

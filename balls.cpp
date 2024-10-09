@@ -1,12 +1,4 @@
-#include <stdlib.h>
-#include <iostream>
-#include <GL/glut.h>
-#include <oneapi/tbb.h>
-
 #include "balls.h"
-
-using namespace std;
-using namespace oneapi::tbb;
 
 #define VMAX_INIT 0.05
 	/* max initial velocity [m/frame] */
@@ -38,7 +30,7 @@ void display(void);
 void drawBackground(void);
 void drawCircle(double radius, Point p, Color color);
 void reshape(int w, int h);
-vector<Ball> makeBalls(unsigned int n);
+vector<Ball *> makeBalls(int n);
 vector<Point> noOverlapCircles(unsigned int n);
 double mass(double radius);
 double volume(double radius);
@@ -47,7 +39,8 @@ Color randColor(void);
 
 const static Rectangle bounds = {{-1.5, -1.0}, {1.5, 1.0}};
 
-static vector<Ball> balls;
+vector<Ball *> balls;
+vector<vector<Collision>> collisions;
 
 int
 main(int argc, char *argv[]) {
@@ -71,6 +64,7 @@ main(int argc, char *argv[]) {
 	}
 
 	balls = makeBalls(nballs);
+	collisions = partitionCollisions(balls);
 
 	glutTimerFunc(FRAME_TIME_MS, animate, 0);
 
@@ -90,8 +84,8 @@ display(void) {
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
 	drawBackground();
-	for (Ball b : balls)
-		drawCircle(b.r, b.p, b.color);
+	for (const Ball *b : balls)
+		drawCircle(b->r, b->p, b->color);
 
 	glutSwapBuffers();
 }
@@ -139,21 +133,30 @@ reshape(int w, int h) {
 	glMatrixMode(GL_MODELVIEW);
 }
 
-/* return n-length vector of Balls with random attributes */
-vector<Ball>
-makeBalls(unsigned int n) {
-	vector<Ball> balls(n);
+
+vector<Ball *>
+makeBalls(int n) {
+	size_t i;
+
 	vector<Point> positions = noOverlapCircles(n);
 	
-	parallel_for(size_t(0), balls.size(), [&balls, positions] (size_t i) {
+	vector<Ball *> balls(n);
+	for(i = 0; i < balls.size(); i++) {
 		cout << "Creating ball " << i << "\n";
-		balls[i].p = positions[i];
-		balls[i].v.x = randDouble(-VMAX_INIT, VMAX_INIT);
-		balls[i].v.y = randDouble(-VMAX_INIT, VMAX_INIT);
-		balls[i].r = randDouble(RMIN, RMAX);
-		balls[i].m = mass(balls[i].r);
-		balls[i].color = randColor();
-	});
+		if ((balls[i] = (Ball *) malloc(sizeof(Ball))) == NULL) {
+			cerr << "failed to allocate ball\n";
+			while (i-- > 0)
+				free(balls[i]);
+			exit(1);
+		}
+		
+		balls[i]->p = positions[i];
+		balls[i]->v.x = randDouble(-VMAX_INIT, VMAX_INIT);
+		balls[i]->v.y = randDouble(-VMAX_INIT, VMAX_INIT);
+		balls[i]->r = randDouble(RMIN, RMAX);
+		balls[i]->m = mass(balls[i]->r);
+		balls[i]->color = randColor();
+	};
 	return balls;
 }
 
@@ -193,20 +196,21 @@ volume(double radius) {
 
 void
 animate(int v) {
-	size_t i, j;
-
 	/* TODO: parallel */
-	for (Ball &ball : balls) {
-		ball.v.y -=G;
-		ball.p = ptAddVec(ball.p, ball.v);
+	for (Ball *ball : balls) {
+		ball->v.y -=G;
+		ball->p = ptAddVec(ball->p, ball->v);
 	}
 
-	/* TODO: parallel */
-	for (i = 0; i < balls.size(); i++) {
-		for (j = i+1; j < balls.size(); j++)
-			collideBall(&balls[i], &balls[j]);
-		collideWall(&balls[i], bounds);
+	for (vector<Collision> layer : collisions) {
+		/* TODO: parallelize */
+		for (Collision c : layer) {
+			collideBall(c.b1, c.b2);
+		}
 	}
+
+	for (Ball *ball : balls)
+		collideWall(ball, bounds);
 
 	display();
 	glutTimerFunc(FRAME_TIME_MS, animate, 0);

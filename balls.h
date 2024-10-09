@@ -1,3 +1,14 @@
+#include <stdlib.h>
+#include <iostream>
+#include <math.h>
+#include <GL/glut.h>
+#include <oneapi/tbb.h>
+#include <oneapi/tbb/flow_graph.h>
+
+using namespace std;
+using namespace oneapi::tbb;
+using namespace oneapi::tbb::flow;
+
 typedef struct {
 	double x, y;
 } Point;
@@ -21,6 +32,44 @@ typedef struct {
 	double m; /* mass [kg] */
 	Color color;
 } Ball;
+
+typedef continue_node<continue_msg> node_t;
+typedef const continue_msg & msg_t;
+
+class Collision {
+public:
+	Ball *b1, *b2;
+
+	Collision(Ball *_b1, Ball *_b2) {
+		b1 = _b1;
+		b2 = _b2;
+	}
+
+	friend bool operator<(const Collision& a, const Collision& b) {
+		return a.b1 < b.b1 || a.b2 < b.b2;
+	}
+
+	friend bool operator==(const Collision& a, const Collision& b) {
+		return a.b1 == b.b1 && a.b2 == b.b2;
+	}
+
+	friend ostream &operator<<(ostream& os, Collision const & c) {
+		return os << "(" << c.b1 << ", " << c.b2 << ")";
+	}
+};
+
+class CollisionGraph {
+private:
+	graph g;
+	node_t root;
+	vector<vector<reference_wrapper<node_t>>> layers;
+
+public:
+	CollisionGraph(void);
+	void run();
+};
+
+vector<vector<Collision>> partitionCollisions(vector<Ball *> balls);
 
 Point addPt(Point p, Point q);
 Point subPt(Point p, Point q);
