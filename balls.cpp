@@ -133,7 +133,6 @@ reshape(int w, int h) {
 	glMatrixMode(GL_MODELVIEW);
 }
 
-
 vector<Ball *>
 makeBalls(int n) {
 	size_t i;
