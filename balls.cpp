@@ -136,11 +136,9 @@ vector<Ball *>
 makeBalls(int n) {
 	size_t i;
 
-	vector<Point> positions = noOverlapCircles(n);
-	
 	vector<Ball *> balls(n);
-	/* TODO: parallel */
-	for(i = 0; i < balls.size(); i++) {
+
+	for (i = 0; i < balls.size(); i++) {
 		cout << "Creating ball " << i << "\n";
 		if ((balls[i] = (Ball *) malloc(sizeof(Ball))) == NULL) {
 			cerr << "failed to allocate ball\n";
@@ -148,14 +146,19 @@ makeBalls(int n) {
 				free(balls[i]);
 			exit(1);
 		}
-		
+	}
+
+	vector<Point> positions = noOverlapCircles(n);
+
+	parallel_for(size_t(0), balls.size(), [balls, positions] (size_t i) {
 		balls[i]->p = positions[i];
 		balls[i]->v.x = randDouble(-VMAX_INIT, VMAX_INIT);
 		balls[i]->v.y = randDouble(-VMAX_INIT, VMAX_INIT);
 		balls[i]->r = randDouble(RMIN, RMAX);
 		balls[i]->m = mass(balls[i]->r);
 		balls[i]->color = randColor();
-	};
+	});
+
 	return balls;
 }
 
