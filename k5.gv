@@ -1,0 +1,9 @@
+graph "k5" {
+	layout=circo
+	node [ shape=circle ];
+
+	0 -- { 1, 2, 3, 4 }
+	1 -- { 2, 3, 4 }
+	2 -- { 3, 4 }
+	3 -- 4
+}
