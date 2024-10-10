@@ -173,7 +173,7 @@ noOverlapCircles(unsigned int n) {
 	for (i = 0; i < n; i++) {
 		cout << "Create non-overlapping circle " << i << "\n";
 		ps[i] = randPtInRect(r);
-		for (j = 0; j < i; j++) /* TODO: parallel reduce */
+		for (j = 0; j < i; j++)
 			if (isCollision(ps[j], RMAX, ps[i], RMAX))
 				break;
 		if (j < i) { /* overlapping */
