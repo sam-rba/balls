@@ -85,7 +85,6 @@ display(void) {
 	drawBackground();
 	for (const Ball *b : balls)
 		drawCircle(b->r, b->p, b->color);
-
 	glutSwapBuffers();
 }
 
