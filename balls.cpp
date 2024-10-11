@@ -197,6 +197,11 @@ volume(double radius) {
 
 void
 animate(int v) {
+	clock_t tstart, elapsed;
+	unsigned int nextFrame;
+
+	tstart = clock();
+
 	/* Update position. */
 	parallel_for(size_t(0), balls.size(), [] (size_t i) {
 		balls[i]->v.y -=G;
@@ -216,5 +221,10 @@ animate(int v) {
 	});
 
 	display();
-	glutTimerFunc(FRAME_TIME_MS, animate, 0);
+
+	elapsed = (clock() - tstart) / (CLOCKS_PER_SEC / MS_PER_S);
+		/* time taken to draw this frame [ms] */
+	nextFrame = (elapsed > FRAME_TIME_MS) ? 0 : FRAME_TIME_MS-elapsed;
+		/* when to start drawing the next frame [ms] */
+	glutTimerFunc(nextFrame, animate, 0);
 }

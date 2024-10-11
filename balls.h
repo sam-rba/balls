@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <math.h>
+#include <time.h>
 #include <GL/glut.h>
 #include <oneapi/tbb.h>
 
