@@ -45,15 +45,6 @@ int
 main(int argc, char *argv[]) {
 	int nballs;
 
-	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-	glutInitWindowSize(WIDTH, HEIGHT);
-	glutCreateWindow("Balls");
-
-	glutKeyboardFunc(keyboard);
-	glutDisplayFunc(display);
-	glutReshapeFunc(reshape);
-
 	nballs = NBALLS_DEFAULT;
 	if (argc > 1) {
 		if (sscanf(argv[1], "%d", &nballs) != 1 || nballs < 1) {
@@ -65,10 +56,19 @@ main(int argc, char *argv[]) {
 	balls = makeBalls(nballs);
 	collisionPartition = partitionCollisions(balls);
 
+	/* Initialize window. */
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
+	glutInitWindowSize(WIDTH, HEIGHT);
+	glutCreateWindow("Balls");
+
+	/* Set callbacks. */
+	glutKeyboardFunc(keyboard);
+	glutDisplayFunc(display);
+	glutReshapeFunc(reshape);
 	glutTimerFunc(FRAME_TIME_MS, animate, 0);
 
-	glutMainLoop();
-
+	glutMainLoop(); /* never returns */
 	return 1;
 }
 
