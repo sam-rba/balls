@@ -2,6 +2,7 @@
 \usepackage{graphicx}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{IEEEtrantools}
 
 \definecolor{codegreen}{rgb}{0, 0.6, 0}
 \definecolor{codegray}{rgb}{0.5, 0.5, 0.5}
@@ -26,7 +27,7 @@
 
 \maketitle
 
-The program uses TBB to leverage data-level parallelism in the simulation.
+The program uses TBB to leverage parallelism in the simulation.
 The brunt of the computational work is in simulating the collisions between balls.
 This was the main area of focus when parallelizing the program.
 
@@ -43,7 +44,7 @@ While this would be effective, a more elegant solution is to partition the work 
 The lock-free solution works by partitioning the set of collision-tests so that no two collisions in a cell of the partition share any balls.
 Suppose there are $n$ balls labeled 0 through $n-1$.
 Let $B$ be the set of balls and $C$ be the set of all collision-tests.
-Each element of $C$ is a tuple of the form $(a, b)$ where $a,b \in B$.
+Each element of $C$ is a set of the form $\{a, b\}$ where $a,b \in B$.
 
 Each ball can be thought of as a vertex in a graph, and each collision-test as an edge in the graph.
 Let $G(B, C)$ be such a graph.
@@ -55,7 +56,7 @@ A \emph{matching} is a set of edges without common vertices, so each cell of the
 A concrete example will illustrate how this works.
 Consider the case of $n = 5$.
 $B = \{0, 1, 2, 3, 4\}$.
-Each ball has to be tested for collision with every other ball, so $C = \{(0, 1), (0, 2), (0, 3), (0, 4), (1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)\}$.
+Each ball has to be tested for collision with every other ball, so $C = \{\{0, 1\}, \{0, 2\}, \{0, 3\}, \{0, 4\}, \{1, 2\}, \{1, 3\}, \{1, 4\}, \{2, 3\}, \{2, 4\}, \{3, 4\}\}$.
 
 This is what $G$ will look like:
 
@@ -74,6 +75,23 @@ Here is one possible way to partition the graph:
 This partition has 7 cells.
 Red highlighting indicates that those edges are included in the cell.
 Note that no edges within a cell share an endpoint---they can be computed concurrently.
+
+Numerically, this partition is
+\begin{IEEEeqnarray*}{rl}
+	C = \{ & \{ \{0, 1\}, \{2, 3\} \}, \\
+	& \{ \{0, 2\}, \{1, 3\} \}, \\
+	& \{ \{0, 3\}, \{1, 2\} \}, \\
+	& \{ \{0, 4\} \}, \\
+	& \{ \{1, 4\} \}, \\
+	& \{ \{2, 4\} \}, \\
+	& \{ \{3, 4\} \} \}
+\end{IEEEeqnarray*}
+
+Although $n=5$ only has two concurrent tasks per cell at most, the degree of concurrency increases rapidly with larger values of $n$.
+$K_n$ has $n(n-1) / 2$ edges, so the number of edges increases in $O(n^2)$.
+The size of a matching $M$ is at most $|M| = |V|/2$ (a perfect matching).
+So, e.g., for $n=10$ the degree of concurrency is 5.
+For $n=20$ the degree of concurrency is 10, etc.
 
 Pseudocode for partitioning the collisions:
 \begin{lstlisting}
@@ -119,6 +137,6 @@ The part of the program that constructs the partition can be found in \texttt{pa
 The program simply initializes the balls, and passes them to \texttt{partitionCollisions()} to construct the partition.
 Each frame, a call to \texttt{animate()} loops through the cells of the partition and uses \texttt{parallel\_for()} to call \texttt{collideBall()} with each pair of balls in the cell.
 
-\texttt{parallel\_for()} was also used to parallelize some other trivial loops with no depences between iterations.
+\texttt{parallel\_for()} was also used to parallelize some other trivial loops with no dependences between iterations.
 
 \end{document}
