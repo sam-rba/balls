@@ -21,11 +21,17 @@ enum { WIDTH = 640, HEIGHT = 480 };
 void initGL(int argc, char *argv[]);
 void initCL(void);
 void configureSharedData(void);
+void execKernel(void);
+void freeCL(void);
+void freeGL(void);
 void initShaders(void);
 char *readFile(const char *filename, size_t *size);
 void compileShader(GLint shader);
+void display(void);
+void reshape(int w, int h);
 
 static cl_context context;
+cl_program prog;
 static cl_command_queue queue;
 static cl_kernel kernel;
 GLuint vao[3], vbo[6];
@@ -39,7 +45,16 @@ main(int argc, char *argv[]) {
 
 	configureSharedData();
 
-	clReleaseContext(context);
+	execKernel();
+
+	glutDisplayFunc(display);
+	glutReshapeFunc(reshape);
+
+	glutMainLoop();
+
+	freeCL();
+
+	freeGL();
 }
 
 void
@@ -63,7 +78,6 @@ initCL(void) {
 	cl_platform_id platform;
 	cl_device_id device;
 	cl_int err;
-	cl_program prog;
 	char *progBuf, *progLog;
 	size_t progSize, logSize;
 
@@ -190,6 +204,28 @@ configureSharedData(void) {
 }
 
 void
+execKernel(void) {
+	// TODO
+}
+
+void
+freeCL(void) {
+	int i;
+
+	for (i = 0; i < nelem(memObjs); i++)
+		clReleaseMemObject(memObjs[i]);
+	clReleaseKernel(kernel);
+	clReleaseCommandQueue(queue);
+	clReleaseProgram(prog);
+	clReleaseContext(context);
+}
+
+void
+freeGL(void) {
+	glDeleteBuffers(nelem(vbo), vbo);
+}
+
+void
 initShaders(void) {
 	GLuint vs, fs, prog;
 	char *vSrc, *fSrc;
@@ -257,4 +293,16 @@ compileShader(GLint shader) {
 		free(log);
 		exit(1);
 	}
+}
+
+void
+display(void) {
+	/* TODO */
+	sysfatal("display() not implemented.\n");
+}
+
+void
+reshape(int w, int h) {
+	/* TODO */
+	sysfatal("reshape() not implemented.\n");
 }
