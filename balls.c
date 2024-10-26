@@ -316,8 +316,17 @@ compileShader(GLint shader) {
 
 void
 display(void) {
-	/* TODO */
-	sysfatal("display() not implemented.\n");
+	int i;
+
+	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
+
+	for (i = nelem(vao)-1; i >= 0; i--) {
+		glBindVertexArray(vao[i]);
+		glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+	}
+
+	glBindVertexArray(0);
+	glutSwapBuffers();
 }
 
 void
