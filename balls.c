@@ -322,6 +322,5 @@ display(void) {
 
 void
 reshape(int w, int h) {
-	/* TODO */
-	sysfatal("reshape() not implemented.\n");
+	glViewport(0, 0, (GLsizei) w, (GLsizei) h);
 }
