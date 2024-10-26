@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <GL/glew.h>
 #include <GL/glut.h>
 #include <GL/glx.h>
 #include <CL/cl_gl.h>
@@ -10,12 +11,16 @@
 
 #define PROG_FILE "balls.cl"
 #define KERNEL_FUNC "balls"
+#define VERTEX_SHADER "balls.vert"
+#define FRAGMENT_SHADER "balls.frag"
 
 enum { WIDTH = 640, HEIGHT = 480 };
 
 void initGL(int argc, char *argv[]);
 void initCL(void);
+void initShaders(void);
 char *readFile(const char *filename, size_t *size);
+void compileShader(GLint shader);
 
 static cl_context context;
 static cl_command_queue queue;
@@ -32,11 +37,18 @@ main(int argc, char *argv[]) {
 
 void
 initGL(int argc, char *argv[]) {
+	GLenum err;
+
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowSize(WIDTH, HEIGHT);
 	glutCreateWindow("Balls");
 	glClearColor(1, 1, 1, 1);
+
+	if ((err = glewInit()) != GLEW_OK)
+		sysfatal("Failed to initialize GLEW.\n");
+
+	initShaders();
 }
 
 void
@@ -109,6 +121,36 @@ initCL(void) {
 		sysfatal("Failed to create kernel: %d\n", err);
 }
 
+void
+initShaders(void) {
+	GLuint vs, fs, prog;
+	char *vSrc, *fSrc;
+	size_t vLen, fLen;
+
+	vs = glCreateShader(GL_VERTEX_SHADER);
+	fs = glCreateShader(GL_FRAGMENT_SHADER);
+
+	vSrc = readFile(VERTEX_SHADER, &vLen);
+	fSrc = readFile(FRAGMENT_SHADER, &fLen);
+
+	glShaderSource(vs, 1, (const char **) &vSrc, (GLint *) &vLen);
+	glShaderSource(fs, 1, (const char **) &fSrc, (GLint *) &fLen);
+
+	compileShader(vs);
+	compileShader(fs);
+
+	prog = glCreateProgram();
+
+	glBindAttribLocation(prog, 0, "in_coords");
+	glBindAttribLocation(prog, 1, "in_colors");
+
+	glAttachShader(prog, vs);
+	glAttachShader(prog, fs);
+
+	glLinkProgram(prog);
+	glUseProgram(prog);
+}
+
 char *
 readFile(const char *filename, size_t *size) {
 	FILE *f;
@@ -130,16 +172,21 @@ readFile(const char *filename, size_t *size) {
 }
 
 void
-configSharedData(void) {
+compileShader(GLint shader) {
+	GLint success;
+	GLsizei logSize;
+	GLchar *log;
 
-}
-
-void
-execKernel(void) {
-
-}
-
-void
-display(void) {
-
+	glCompileShader(shader);
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logSize);
+		if ((log = malloc((logSize+1) * sizeof(GLchar))) == NULL)
+			sysfatal("Failed to allocate space for shader compile log.\n");
+		glGetShaderInfoLog(shader, logSize+1, NULL, log);
+		log[logSize] = '\0';
+		fprintf(stderr, "%s\n", log);
+		free(log);
+		exit(1);
+	}
 }

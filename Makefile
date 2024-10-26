@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic -Wno-deprecated-declarations
-LDFLAGS = -lOpenCL -lglut -lGLU -lGL -lGLX
+LDFLAGS = -lGLEW -lGL -lX11 -lGLU -lOpenGL -lOpenCL -lglut -lGLX
 
 SRC = balls.c sysfatal.c
 OBJ = ${SRC:.c=.o}
