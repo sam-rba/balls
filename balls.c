@@ -9,6 +9,8 @@
 
 #include "sysfatal.h"
 
+#define nelem(arr) (sizeof(arr) / sizeof(arr[0]))
+
 #define PROG_FILE "balls.cl"
 #define KERNEL_FUNC "balls"
 #define VERTEX_SHADER "balls.vert"
@@ -18,6 +20,7 @@ enum { WIDTH = 640, HEIGHT = 480 };
 
 void initGL(int argc, char *argv[]);
 void initCL(void);
+void configureSharedData(void);
 void initShaders(void);
 char *readFile(const char *filename, size_t *size);
 void compileShader(GLint shader);
@@ -25,12 +28,16 @@ void compileShader(GLint shader);
 static cl_context context;
 static cl_command_queue queue;
 static cl_kernel kernel;
+GLuint vao[3], vbo[6];
+cl_mem memObjs[nelem(vbo)];
 
 int
 main(int argc, char *argv[]) {
 	initGL(argc, argv);
 
 	initCL();
+
+	configureSharedData();
 
 	clReleaseContext(context);
 }
@@ -119,6 +126,67 @@ initCL(void) {
 	kernel = clCreateKernel(prog, KERNEL_FUNC, &err);
 	if (err < 0)
 		sysfatal("Failed to create kernel: %d\n", err);
+}
+
+void
+configureSharedData(void) {
+	int i, err;
+
+	/* Create 3 vertex array objects, one for each square. */
+	glGenVertexArrays(nelem(vao), vao);
+	glBindVertexArray(vao[0]);
+
+	/* Create 6 vertex buffer objects, one for each set of coordinates and colors. */
+	glGenBuffers(nelem(vbo), vbo);
+
+	/* VBO for coordinates of first square */
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+	glBufferData(GL_ARRAY_BUFFER, 12*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(0);
+
+	/* VBO for colors of first square */
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
+	glBufferData(GL_ARRAY_BUFFER, 12*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(1);
+
+	/* VBO for coordinates of second square */
+	glBindVertexArray(vao[1]);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
+	glBufferData(GL_ARRAY_BUFFER, 12*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(0);
+
+	/* VBO for colors of second square */
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[3]);
+	glBufferData(GL_ARRAY_BUFFER, 12*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(1);
+
+	/* VBO for coordinates of third square */
+	glBindVertexArray(vao[2]);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[4]);
+	glBufferData(GL_ARRAY_BUFFER, 12*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(0);
+
+	/* VBO for colors of third square */
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[5]);
+	glBufferData(GL_ARRAY_BUFFER, 12*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	/* Create OpenCL memory objects for the VBOs. */
+	for (i = 0; i < nelem(vbo); i++) {
+		memObjs[i] = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vbo[i], &err);
+		if (err < 0)
+			sysfatal("Failed to create buffer object from VBO.\n");
+		err = clSetKernelArg(kernel, i, sizeof(cl_mem), &memObjs[i]);
+		if (err < 0)
+			sysfatal("Failed to set kernel argument.\n");
+	}
 }
 
 void
