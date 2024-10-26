@@ -205,7 +205,26 @@ configureSharedData(void) {
 
 void
 execKernel(void) {
-	// TODO
+	int err;
+	cl_event kernelEvent;
+
+	glFinish();
+
+	err = clEnqueueAcquireGLObjects(queue, nelem(memObjs), memObjs, 0, NULL, NULL);
+	if (err < 0)
+		sysfatal("Couldn't acquire the GL objects.\n");
+
+	err = clEnqueueTask(queue, kernel, 0, NULL, &kernelEvent);
+	if (err < 0)
+		sysfatal("Couldn't enqueue the kernel.\n");
+
+	err = clWaitForEvents(1, &kernelEvent);
+	if (err < 0)
+		sysfatal("Couldn't enqueue the kernel.\n");
+
+	clEnqueueReleaseGLObjects(queue, nelem(memObjs), memObjs, 0, NULL, NULL);
+	clFinish(queue);
+	clReleaseEvent(kernelEvent);
 }
 
 void
