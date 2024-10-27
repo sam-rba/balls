@@ -144,7 +144,8 @@ initCL(void) {
 
 void
 configureSharedData(void) {
-	int err;
+	int err, i;
+	GLfloat positions[2 * NBALLS];
 
 	/* Create position array. */
 	glGenVertexArrays(1, &positionVAO);
@@ -155,9 +156,13 @@ configureSharedData(void) {
 	glBindVertexArray(vertexVAO);
 
 	/* Create position buffer. */
+	for (i = 0; i < 2*NBALLS; i += 2) {
+		positions[i] = -0.5f;
+		positions[i+1] = -0.25f;
+	}
 	glGenBuffers(1, &positionVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-	glBufferData(GL_ARRAY_BUFFER, 2 * NBALLS * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, 2*NBALLS*sizeof(GLfloat), positions, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
 
@@ -197,6 +202,7 @@ execKernel(void) {
 	if (err < 0)
 		sysfatal("Couldn't acquire the GL objects.\n");
 
+	/* +1 because last point must be coincident with first point. */
 	globalSize = CIRCLE_SEGS+1;
 	err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &globalSize, NULL, 0, NULL, &kernelEvent);
 	if (err < 0)

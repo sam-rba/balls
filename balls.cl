@@ -1,12 +1,9 @@
-#define RADIUS 0.75f
+#define RADIUS 0.15f
 
 __kernel void
 balls(__global float2 *position, __global float2 *vertices) {
 	size_t id, nsegs;
 	float theta;
-
-	position[0].x = 0.0f;
-	position[0].y = 0.0f;
 
 	/* Center of circle. */
 	vertices[0].x = position[0].x;
