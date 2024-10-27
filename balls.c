@@ -17,6 +17,7 @@
 #define FRAGMENT_SHADER "balls.frag"
 
 enum { WIDTH = 640, HEIGHT = 480 };
+enum { NVERTICES = 256 };
 
 void initGL(int argc, char *argv[]);
 void initCL(void);
@@ -34,8 +35,9 @@ static cl_context context;
 cl_program prog;
 static cl_command_queue queue;
 static cl_kernel kernel;
-GLuint vao[3], vbo[6];
-cl_mem memObjs[nelem(vbo)];
+GLuint vao, vbo;
+cl_mem vertexBuf;
+float tick;
 
 int
 main(int argc, char *argv[]) {
@@ -45,16 +47,15 @@ main(int argc, char *argv[]) {
 
 	configureSharedData();
 
-	execKernel();
-
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
 
 	glutMainLoop();
 
 	freeCL();
-
 	freeGL();
+
+	return 0;
 }
 
 void
@@ -144,95 +145,66 @@ initCL(void) {
 
 void
 configureSharedData(void) {
-	int i, err;
+	int err;
 
-	/* Create 3 vertex array objects, one for each square. */
-	glGenVertexArrays(nelem(vao), vao);
-	glBindVertexArray(vao[0]);
+	/* Create vertex array object. */
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
 
-	/* Create 6 vertex buffer objects, one for each set of coordinates and colors. */
-	glGenBuffers(nelem(vbo), vbo);
+	/* Create vertex buffer. */
+	glGenBuffers(1, &vbo);
 
-	/* VBO for coordinates of first square */
-	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-	glBufferData(GL_ARRAY_BUFFER, 12*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	/* Create VBO coordinates. */
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, 4 * NVERTICES * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0); 
 	glEnableVertexAttribArray(0);
 
-	/* VBO for colors of first square */
-	glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
-	glBufferData(GL_ARRAY_BUFFER, 12*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(1);
+	/* Create memory objects from VBOs. */
+	vertexBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vbo, &err);
+	if (err < 0)
+		sysfatal("Failed to create buffer object from VBO.\n");
 
-	/* VBO for coordinates of second square */
-	glBindVertexArray(vao[1]);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
-	glBufferData(GL_ARRAY_BUFFER, 12*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(0);
-
-	/* VBO for colors of second square */
-	glBindBuffer(GL_ARRAY_BUFFER, vbo[3]);
-	glBufferData(GL_ARRAY_BUFFER, 12*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(1);
-
-	/* VBO for coordinates of third square */
-	glBindVertexArray(vao[2]);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo[4]);
-	glBufferData(GL_ARRAY_BUFFER, 12*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(0);
-
-	/* VBO for colors of third square */
-	glBindBuffer(GL_ARRAY_BUFFER, vbo[5]);
-	glBufferData(GL_ARRAY_BUFFER, 12*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	/* Create OpenCL memory objects for the VBOs. */
-	for (i = 0; i < nelem(vbo); i++) {
-		memObjs[i] = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vbo[i], &err);
-		if (err < 0)
-			sysfatal("Failed to create buffer object from VBO.\n");
-		err = clSetKernelArg(kernel, i, sizeof(cl_mem), &memObjs[i]);
-		if (err < 0)
-			sysfatal("Failed to set kernel argument.\n");
-	}
+	/* Set kernel arguments. */
+	err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &vertexBuf);
+	err |= clSetKernelArg(kernel, 1, sizeof(float), &tick);
+	if (err < 0)
+		sysfatal("Failed to set kernel arguments.\n");
 }
 
 void
 execKernel(void) {
 	int err;
+	size_t globalSize;
 	cl_event kernelEvent;
 
 	glFinish();
 
-	err = clEnqueueAcquireGLObjects(queue, nelem(memObjs), memObjs, 0, NULL, NULL);
+	err = clEnqueueAcquireGLObjects(queue, 1, &vertexBuf, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Couldn't acquire the GL objects.\n");
 
-	err = clEnqueueTask(queue, kernel, 0, NULL, &kernelEvent);
+	err = clSetKernelArg(kernel, 1, sizeof(float), &tick);
 	if (err < 0)
-		sysfatal("Couldn't enqueue the kernel.\n");
+		sysfatal("Failed to set kernel argument.\n");
+
+	globalSize = NVERTICES;
+	err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &globalSize, NULL, 0, NULL, &kernelEvent);
+	if (err < 0)
+		sysfatal("Couldn't enqueue kernel.\n");
 
 	err = clWaitForEvents(1, &kernelEvent);
 	if (err < 0)
 		sysfatal("Couldn't enqueue the kernel.\n");
 
-	clEnqueueReleaseGLObjects(queue, nelem(memObjs), memObjs, 0, NULL, NULL);
+	clEnqueueReleaseGLObjects(queue, 1, &vertexBuf, 0, NULL, NULL);
 	clFinish(queue);
 	clReleaseEvent(kernelEvent);
 }
 
 void
 freeCL(void) {
-	int i;
-
-	for (i = 0; i < nelem(memObjs); i++)
-		clReleaseMemObject(memObjs[i]);
+	clReleaseMemObject(vertexBuf);
 	clReleaseKernel(kernel);
 	clReleaseCommandQueue(queue);
 	clReleaseProgram(prog);
@@ -241,7 +213,8 @@ freeCL(void) {
 
 void
 freeGL(void) {
-	glDeleteBuffers(nelem(vbo), vbo);
+	glDeleteBuffers(1, &vbo);
+	glDeleteBuffers(1, &vao);
 }
 
 void
@@ -316,17 +289,18 @@ compileShader(GLint shader) {
 
 void
 display(void) {
-	int i;
-
 	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
 
-	for (i = nelem(vao)-1; i >= 0; i--) {
-		glBindVertexArray(vao[i]);
-		glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-	}
+	execKernel();
+
+	glBindVertexArray(vao);
+	glDrawArrays(GL_LINE_LOOP, 0, NVERTICES);
+
+	tick += 0.0005f;
 
 	glBindVertexArray(0);
 	glutSwapBuffers();
+	glutPostRedisplay();
 }
 
 void

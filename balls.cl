@@ -1,29 +1,22 @@
+#define RADIUS 0.75
+
 __kernel void
-balls(__global float4 *coords1, __global float4 *colors1,
-	__global float4 *coords2, __global float4 *colors2,
-	__global float4 *coords3, __global float4 *colors3
-) {
-	coords1[0] = (float4)(-0.15f, -0.15f,  1.00f, -0.15f);
-	coords1[1] = (float4)( 0.15f,  1.00f,  0.15f,  0.15f);
-	coords1[2] = (float4)( 1.00f,  0.15f, -0.15f,  1.00f);
-	
-	colors1[0] = (float4)(0.00f, 0.00f, 0.00f, 0.25f);
-	colors1[1] = (float4)(0.00f, 0.00f, 0.50f, 0.00f);
-	colors1[2] = (float4)(0.00f, 0.75f, 0.00f, 0.00f);
-	
-	coords2[0] = (float4)(-0.30f, -0.30f,  0.00f, -0.30f);
-	coords2[1] = (float4)( 0.30f,  0.00f,  0.30f,  0.30f);
-	coords2[2] = (float4)( 0.00f,  0.30f, -0.30f,  0.00f);
-	
-	colors2[0] = (float4)(0.00f, 0.00f, 0.00f, 0.00f);
-	colors2[1] = (float4)(0.25f, 0.00f, 0.00f, 0.50f);
-	colors2[2] = (float4)(0.00f, 0.00f, 0.75f, 0.00f);
-	
-	coords3[0] = (float4)(-0.45f, -0.45f, -1.00f, -0.45f);
-	coords3[1] = (float4)( 0.45f, -1.00f,  0.45f,  0.45f);
-	coords3[2] = (float4)(-1.00f,  0.45f, -0.45f, -1.00f);
-	
-	colors3[0] = (float4)(0.00f, 0.00f, 0.00f, 0.00f);
-	colors3[1] = (float4)(0.00f, 0.25f, 0.00f, 0.00f);
-	colors3[2] = (float4)(0.50f, 0.00f, 0.00f, 0.75f);
+balls(__global float4 *vertices, float tick) {
+	uint id;
+	int longitude, latitude;
+	float sign, phi, theta;
+
+	id = get_global_id(0);
+
+	longitude = id / 16;
+	latitude = id % 16;
+
+	sign = -2.0f * (longitude % 2) + 1.0f;
+	phi = 2.0f * M_PI_F * longitude / 16 + tick;
+	theta = M_PI_F * latitude / 16;
+
+	vertices[id].x = RADIUS * sin(theta) * cos(phi);
+	vertices[id].y = RADIUS * sign * cos(theta);
+	vertices[id].z = RADIUS * sin(theta) * sin(phi);
+	vertices[id].w = 1.0f;
 }
