@@ -17,7 +17,10 @@
 #define FRAGMENT_SHADER "balls.frag"
 
 enum { WIDTH = 640, HEIGHT = 480 };
-enum { NBALLS = 4, CIRCLE_SEGS = 16 };
+enum {
+	NBALLS = 4,
+	CIRCLE_POINTS = 16+2, /* +2 for center point and last point which overlaps with first point. */
+};
 
 void initGL(int argc, char *argv[]);
 void initCL(void);
@@ -169,7 +172,7 @@ configureSharedData(void) {
 	/* Create vertex buffer. */
 	glGenBuffers(1, &vertexVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexVBO);
-	glBufferData(GL_ARRAY_BUFFER, NBALLS*(CIRCLE_SEGS+2)*2*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, NBALLS*CIRCLE_POINTS*2*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
 
@@ -202,7 +205,7 @@ execKernel(void) {
 	if (err < 0)
 		sysfatal("Couldn't acquire the GL objects.\n");
 
-	localSize = CIRCLE_SEGS+2;
+	localSize = CIRCLE_POINTS;
 	globalSize = NBALLS * localSize;
 	err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &globalSize, &localSize, 0, NULL, &kernelEvent);
 	if (err < 0)
@@ -315,7 +318,7 @@ display(void) {
 
 	glBindVertexArray(vertexVAO);
 	for (i = 0; i < NBALLS; i++)
-		glDrawArrays(GL_TRIANGLE_FAN, i*(CIRCLE_SEGS+2), CIRCLE_SEGS+2);
+		glDrawArrays(GL_TRIANGLE_FAN, i*CIRCLE_POINTS, CIRCLE_POINTS);
 
 	glBindVertexArray(0);
 	glutSwapBuffers();
