@@ -146,33 +146,34 @@ void
 configureSharedData(void) {
 	int err;
 
-	/* Create vertex array objects. */
+	/* Create position array. */
 	glGenVertexArrays(1, &positionVAO);
 	glBindVertexArray(positionVAO);
 
+	/* Create vertex array. */
 	glGenVertexArrays(1, &vertexVAO);
 	glBindVertexArray(vertexVAO);
 
-	/* Create vertex buffers. */
+	/* Create position buffer. */
 	glGenBuffers(1, &positionVBO);
-	glGenBuffers(1, &vertexVBO);
-
-	/* Create VBO coordinates. */
 	glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
 	glBufferData(GL_ARRAY_BUFFER, 2 * NBALLS * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
 
+	/* Create vertex buffer. */
+	glGenBuffers(1, &vertexVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexVBO);
 	glBufferData(GL_ARRAY_BUFFER, 2 * (CIRCLE_SEGS+2) * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
 
-	/* Create memory objects from VBOs. */
+	/* Create CL memory object from position buffer. */
 	positionBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, positionVBO, &err);
 	if (err < 0)
 		sysfatal("Failed to create buffer object from VBO.\n");
 
+	/* Create CL memory object from vertex buffer. */
 	vertexBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vertexVBO, &err);
 	if (err < 0)
 		sysfatal("Failed to create buffer object from VBO.\n");
