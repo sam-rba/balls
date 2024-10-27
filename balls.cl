@@ -1,22 +1,20 @@
-#define RADIUS 0.75
+#define RADIUS 0.75f
 
 __kernel void
-balls(__global float4 *vertices, float tick) {
-	uint id;
-	int longitude, latitude;
-	float sign, phi, theta;
+balls(__global float2 *position, __global float2 *vertices) {
+	size_t id, nsegs;
+	float theta;
+
+	position[0].x = 0.0f;
+	position[0].y = 0.0f;
+
+	/* Center of circle. */
+	vertices[0].x = position[0].x;
+	vertices[0].y = position[0].y;
 
 	id = get_global_id(0);
-
-	longitude = id / 16;
-	latitude = id % 16;
-
-	sign = -2.0f * (longitude % 2) + 1.0f;
-	phi = 2.0f * M_PI_F * longitude / 16 + tick;
-	theta = M_PI_F * latitude / 16;
-
-	vertices[id].x = RADIUS * sin(theta) * cos(phi);
-	vertices[id].y = RADIUS * sign * cos(theta);
-	vertices[id].z = RADIUS * sin(theta) * sin(phi);
-	vertices[id].w = 1.0f;
+	nsegs = get_global_size(0)-1;
+	theta = 2.0f * M_PI_F * id / nsegs;
+	vertices[id+1].x = position[0].x + RADIUS * cos(theta);
+	vertices[id+1].y = position[0].y + RADIUS * sin(theta);
 }

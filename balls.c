@@ -17,7 +17,7 @@
 #define FRAGMENT_SHADER "balls.frag"
 
 enum { WIDTH = 640, HEIGHT = 480 };
-enum { NVERTICES = 256 };
+enum { NBALLS = 1, CIRCLE_SEGS = 16 };
 
 void initGL(int argc, char *argv[]);
 void initCL(void);
@@ -35,9 +35,8 @@ static cl_context context;
 cl_program prog;
 static cl_command_queue queue;
 static cl_kernel kernel;
-GLuint vao, vbo;
-cl_mem vertexBuf;
-float tick;
+GLuint positionVAO, positionVBO, vertexVAO, vertexVBO;
+cl_mem positionBuf, vertexBuf;
 
 int
 main(int argc, char *argv[]) {
@@ -147,27 +146,40 @@ void
 configureSharedData(void) {
 	int err;
 
-	/* Create vertex array object. */
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
+	/* Create vertex array objects. */
+	glGenVertexArrays(1, &positionVAO);
+	glBindVertexArray(positionVAO);
 
-	/* Create vertex buffer. */
-	glGenBuffers(1, &vbo);
+	glGenVertexArrays(1, &vertexVAO);
+	glBindVertexArray(vertexVAO);
+
+	/* Create vertex buffers. */
+	glGenBuffers(1, &positionVBO);
+	glGenBuffers(1, &vertexVBO);
 
 	/* Create VBO coordinates. */
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, 4 * NVERTICES * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0); 
+	glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
+	glBufferData(GL_ARRAY_BUFFER, 2 * NBALLS * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vertexVBO);
+	glBufferData(GL_ARRAY_BUFFER, 2 * (CIRCLE_SEGS+2) * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
 
 	/* Create memory objects from VBOs. */
-	vertexBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vbo, &err);
+	positionBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, positionVBO, &err);
+	if (err < 0)
+		sysfatal("Failed to create buffer object from VBO.\n");
+
+	vertexBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vertexVBO, &err);
 	if (err < 0)
 		sysfatal("Failed to create buffer object from VBO.\n");
 
 	/* Set kernel arguments. */
-	err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &vertexBuf);
-	err |= clSetKernelArg(kernel, 1, sizeof(float), &tick);
+	err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &positionBuf);
+	err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &vertexBuf);
 	if (err < 0)
 		sysfatal("Failed to set kernel arguments.\n");
 }
@@ -184,11 +196,7 @@ execKernel(void) {
 	if (err < 0)
 		sysfatal("Couldn't acquire the GL objects.\n");
 
-	err = clSetKernelArg(kernel, 1, sizeof(float), &tick);
-	if (err < 0)
-		sysfatal("Failed to set kernel argument.\n");
-
-	globalSize = NVERTICES;
+	globalSize = CIRCLE_SEGS+1;
 	err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &globalSize, NULL, 0, NULL, &kernelEvent);
 	if (err < 0)
 		sysfatal("Couldn't enqueue kernel.\n");
@@ -204,6 +212,7 @@ execKernel(void) {
 
 void
 freeCL(void) {
+	clReleaseMemObject(positionBuf);
 	clReleaseMemObject(vertexBuf);
 	clReleaseKernel(kernel);
 	clReleaseCommandQueue(queue);
@@ -213,8 +222,10 @@ freeCL(void) {
 
 void
 freeGL(void) {
-	glDeleteBuffers(1, &vbo);
-	glDeleteBuffers(1, &vao);
+	glDeleteBuffers(1, &positionVBO);
+	glDeleteBuffers(1, &positionVAO);
+	glDeleteBuffers(1, &vertexVBO);
+	glDeleteBuffers(1, &vertexVAO);
 }
 
 void
@@ -293,10 +304,8 @@ display(void) {
 
 	execKernel();
 
-	glBindVertexArray(vao);
-	glDrawArrays(GL_LINE_LOOP, 0, NVERTICES);
-
-	tick += 0.0005f;
+	glBindVertexArray(vertexVAO);
+	glDrawArrays(GL_TRIANGLE_FAN, 0, CIRCLE_SEGS+2);
 
 	glBindVertexArray(0);
 	glutSwapBuffers();
