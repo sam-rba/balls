@@ -1,17 +1,19 @@
 #define RADIUS 0.15f
 
 __kernel void
-balls(__global float2 *position, __global float2 *vertices) {
-	size_t id, nsegs;
+balls(__global float2 *positions, __global float2 *vertices) {
+	size_t ball, nsegs;
+	float2 center;
 	float theta;
 
-	/* Center of circle. */
-	vertices[0].x = position[0].x;
-	vertices[0].y = position[0].y;
+	ball = get_group_id(0);
+	center = positions[ball];
 
-	id = get_global_id(0);
-	nsegs = get_global_size(0)-1;
-	theta = 2.0f * M_PI_F * id / nsegs;
-	vertices[id+1].x = position[0].x + RADIUS * cos(theta);
-	vertices[id+1].y = position[0].y + RADIUS * sin(theta);
+	nsegs = get_local_size(0)-2; /* Number of edge segments. */
+	theta = 2.0f * M_PI_F * get_local_id(0) / nsegs;
+
+	vertices[get_global_id(0)].x = center.x + RADIUS * cos(theta);
+	vertices[get_global_id(0)].y = center.y + RADIUS * sin(theta);
+
+	vertices[ball*get_local_size(0)] = center;
 }

@@ -17,7 +17,7 @@
 #define FRAGMENT_SHADER "balls.frag"
 
 enum { WIDTH = 640, HEIGHT = 480 };
-enum { NBALLS = 1, CIRCLE_SEGS = 16 };
+enum { NBALLS = 4, CIRCLE_SEGS = 16 };
 
 void initGL(int argc, char *argv[]);
 void initCL(void);
@@ -157,19 +157,19 @@ configureSharedData(void) {
 
 	/* Create position buffer. */
 	for (i = 0; i < 2*NBALLS; i += 2) {
-		positions[i] = -0.5f;
-		positions[i+1] = -0.25f;
+		positions[i] = -0.5f + 0.15f*i;
+		positions[i+1] = -0.25f + 0.1f*i;
 	}
 	glGenBuffers(1, &positionVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-	glBufferData(GL_ARRAY_BUFFER, 2*NBALLS*sizeof(GLfloat), positions, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, NBALLS*2*sizeof(GLfloat), positions, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
 
 	/* Create vertex buffer. */
 	glGenBuffers(1, &vertexVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexVBO);
-	glBufferData(GL_ARRAY_BUFFER, 2 * (CIRCLE_SEGS+2) * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, NBALLS*(CIRCLE_SEGS+2)*2*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
 
@@ -193,7 +193,7 @@ configureSharedData(void) {
 void
 execKernel(void) {
 	int err;
-	size_t globalSize;
+	size_t localSize, globalSize;
 	cl_event kernelEvent;
 
 	glFinish();
@@ -202,9 +202,9 @@ execKernel(void) {
 	if (err < 0)
 		sysfatal("Couldn't acquire the GL objects.\n");
 
-	/* +1 because last point must be coincident with first point. */
-	globalSize = CIRCLE_SEGS+1;
-	err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &globalSize, NULL, 0, NULL, &kernelEvent);
+	localSize = CIRCLE_SEGS+2;
+	globalSize = NBALLS * localSize;
+	err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &globalSize, &localSize, 0, NULL, &kernelEvent);
 	if (err < 0)
 		sysfatal("Couldn't enqueue kernel.\n");
 
@@ -307,12 +307,15 @@ compileShader(GLint shader) {
 
 void
 display(void) {
+	int i;
+
 	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
 
 	execKernel();
 
 	glBindVertexArray(vertexVAO);
-	glDrawArrays(GL_TRIANGLE_FAN, 0, CIRCLE_SEGS+2);
+	for (i = 0; i < NBALLS; i++)
+		glDrawArrays(GL_TRIANGLE_FAN, i*(CIRCLE_SEGS+2), CIRCLE_SEGS+2);
 
 	glBindVertexArray(0);
 	glutSwapBuffers();
