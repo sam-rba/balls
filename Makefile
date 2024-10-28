@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic -Wno-deprecated-declarations
 LDFLAGS = -lGLEW -lGL -lX11 -lGLU -lOpenGL -lOpenCL -lglut -lGLX
 
-SRC = balls.c sysfatal.c
+SRC = balls.c sysfatal.c geo.c
 OBJ = ${SRC:.c=.o}
 
 balls: ${OBJ}
@@ -14,4 +14,4 @@ balls: ${OBJ}
 clean:
 	rm -f *.o balls
 
-${OBJ}: sysfatal.h
+${OBJ}: sysfatal.h balls.h

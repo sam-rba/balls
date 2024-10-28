@@ -8,6 +8,7 @@
 #include <CL/cl_gl.h>
 
 #include "sysfatal.h"
+#include "balls.h"
 
 #define nelem(arr) (sizeof(arr) / sizeof(arr[0]))
 
@@ -15,15 +16,19 @@
 #define KERNEL_FUNC "balls"
 #define VERTEX_SHADER "balls.vert"
 #define FRAGMENT_SHADER "balls.frag"
+#define RMAX 0.25f
 
 enum { WIDTH = 640, HEIGHT = 480 };
 enum {
-	NBALLS = 4,
+	NBALLS = 8,
 	CIRCLE_POINTS = 16+2, /* +2 for center point and last point which overlaps with first point. */
 };
 
+const Rectangle bounds = { {-1.0, -1.0}, {1.0, 1.0} };
+
 void initGL(int argc, char *argv[]);
 void initCL(void);
+void setPositions(void);
 void configureSharedData(void);
 void execKernel(void);
 void freeCL(void);
@@ -33,13 +38,14 @@ char *readFile(const char *filename, size_t *size);
 void compileShader(GLint shader);
 void display(void);
 void reshape(int w, int h);
+float2 *noOverlapPositions(int n);
 
 static cl_context context;
 cl_program prog;
 static cl_command_queue queue;
 static cl_kernel kernel;
-GLuint positionVAO, positionVBO, vertexVAO, vertexVBO;
-cl_mem positionBuf, vertexBuf;
+GLuint vao, vbo;
+cl_mem positions, vertexBuf;
 
 int
 main(int argc, char *argv[]) {
@@ -47,6 +53,7 @@ main(int argc, char *argv[]) {
 
 	initCL();
 
+	setPositions();
 	configureSharedData();
 
 	glutDisplayFunc(display);
@@ -146,49 +153,49 @@ initCL(void) {
 }
 
 void
-configureSharedData(void) {
-	int err, i;
-	GLfloat positions[2 * NBALLS];
+setPositions(void) {
+	float2 *hostPositions;
+	int err;
 
-	/* Create position array. */
-	glGenVertexArrays(1, &positionVAO);
-	glBindVertexArray(positionVAO);
+	/* Generate initial ball positions. */
+	hostPositions = noOverlapPositions(NBALLS);
+
+	/* Create device-side buffer. */
+	positions = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, NBALLS*2*sizeof(float), hostPositions, &err);
+	if (err < 0)
+		sysfatal("Failed to allocate position buffer.\n");
+
+	/* Copy positions to device. */
+	err = clEnqueueWriteBuffer(queue, positions, CL_TRUE, 0, NBALLS*sizeof(float2), hostPositions, 0, NULL, NULL);
+	if (err < 0)
+		sysfatal("Failed to copy ball positions to device.\n");
+
+	free(hostPositions);
+}
+
+void
+configureSharedData(void) {
+	int err;
 
 	/* Create vertex array. */
-	glGenVertexArrays(1, &vertexVAO);
-	glBindVertexArray(vertexVAO);
-
-	/* Create position buffer. */
-	for (i = 0; i < 2*NBALLS; i += 2) {
-		positions[i] = -0.5f + 0.15f*i;
-		positions[i+1] = -0.25f + 0.1f*i;
-	}
-	glGenBuffers(1, &positionVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-	glBufferData(GL_ARRAY_BUFFER, NBALLS*2*sizeof(GLfloat), positions, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(0);
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
 
 	/* Create vertex buffer. */
-	glGenBuffers(1, &vertexVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexVBO);
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, NBALLS*CIRCLE_POINTS*2*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
 
-	/* Create CL memory object from position buffer. */
-	positionBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, positionVBO, &err);
-	if (err < 0)
-		sysfatal("Failed to create buffer object from VBO.\n");
-
 	/* Create CL memory object from vertex buffer. */
-	vertexBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vertexVBO, &err);
+	vertexBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vbo, &err);
 	if (err < 0)
 		sysfatal("Failed to create buffer object from VBO.\n");
 
 	/* Set kernel arguments. */
-	err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &positionBuf);
-	err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &vertexBuf);
+	err = clSetKernelArg(kernel, 0, sizeof(positions), &positions);
+	err |= clSetKernelArg(kernel, 1, sizeof(vertexBuf), &vertexBuf);
 	if (err < 0)
 		sysfatal("Failed to set kernel arguments.\n");
 }
@@ -222,7 +229,7 @@ execKernel(void) {
 
 void
 freeCL(void) {
-	clReleaseMemObject(positionBuf);
+	clReleaseMemObject(positions);
 	clReleaseMemObject(vertexBuf);
 	clReleaseKernel(kernel);
 	clReleaseCommandQueue(queue);
@@ -232,10 +239,8 @@ freeCL(void) {
 
 void
 freeGL(void) {
-	glDeleteBuffers(1, &positionVBO);
-	glDeleteBuffers(1, &positionVAO);
-	glDeleteBuffers(1, &vertexVBO);
-	glDeleteBuffers(1, &vertexVAO);
+	glDeleteBuffers(1, &vbo);
+	glDeleteBuffers(1, &vao);
 }
 
 void
@@ -316,7 +321,7 @@ display(void) {
 
 	execKernel();
 
-	glBindVertexArray(vertexVAO);
+	glBindVertexArray(vao);
 	for (i = 0; i < NBALLS; i++)
 		glDrawArrays(GL_TRIANGLE_FAN, i*CIRCLE_POINTS, CIRCLE_POINTS);
 
@@ -328,4 +333,28 @@ display(void) {
 void
 reshape(int w, int h) {
 	glViewport(0, 0, (GLsizei) w, (GLsizei) h);
+}
+
+float2 *
+noOverlapPositions(int n) {
+	float2 *ps;
+	Rectangle r;
+	int i, j;
+
+	if ((ps = malloc(n*sizeof(float2))) == NULL)
+		sysfatal("Failed to allocate position array.\n");
+
+	r = insetRect(bounds, RMAX);
+	for (i = 0; i < n; i++) {
+		ps[i] = randPtInRect(r);
+		for (j = 0; j < i; j++)
+			if (isCollision(ps[j], RMAX, ps[i], RMAX))
+				break;
+		if (j < i) { /* Overlapping. */
+			i--;
+			continue;
+		}
+	}
+
+	return ps;
 }
