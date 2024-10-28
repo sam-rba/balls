@@ -13,7 +13,7 @@
 #define nelem(arr) (sizeof(arr) / sizeof(arr[0]))
 
 #define PROG_FILE "balls.cl"
-#define KERNEL_FUNC "balls"
+#define GEN_VERTICES_KERNEL_FUNC "genVertices"
 #define VERTEX_SHADER "balls.vert"
 #define FRAGMENT_SHADER "balls.frag"
 #define RMAX 0.25f
@@ -43,7 +43,7 @@ float2 *noOverlapPositions(int n);
 static cl_context context;
 cl_program prog;
 static cl_command_queue queue;
-static cl_kernel kernel;
+static cl_kernel genVerticesKernel;
 GLuint vao, vbo;
 cl_mem positions, vertexBuf;
 
@@ -147,7 +147,7 @@ initCL(void) {
 		sysfatal("Failed to create command queue.\n");
 
 	/* Create kernel. */
-	kernel = clCreateKernel(prog, KERNEL_FUNC, &err);
+	genVerticesKernel = clCreateKernel(prog, GEN_VERTICES_KERNEL_FUNC, &err);
 	if (err < 0)
 		sysfatal("Failed to create kernel: %d\n", err);
 }
@@ -194,8 +194,8 @@ configureSharedData(void) {
 		sysfatal("Failed to create buffer object from VBO.\n");
 
 	/* Set kernel arguments. */
-	err = clSetKernelArg(kernel, 0, sizeof(positions), &positions);
-	err |= clSetKernelArg(kernel, 1, sizeof(vertexBuf), &vertexBuf);
+	err = clSetKernelArg(genVerticesKernel, 0, sizeof(positions), &positions);
+	err |= clSetKernelArg(genVerticesKernel, 1, sizeof(vertexBuf), &vertexBuf);
 	if (err < 0)
 		sysfatal("Failed to set kernel arguments.\n");
 }
@@ -214,7 +214,7 @@ execKernel(void) {
 
 	localSize = CIRCLE_POINTS;
 	globalSize = NBALLS * localSize;
-	err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &globalSize, &localSize, 0, NULL, &kernelEvent);
+	err = clEnqueueNDRangeKernel(queue, genVerticesKernel, 1, NULL, &globalSize, &localSize, 0, NULL, &kernelEvent);
 	if (err < 0)
 		sysfatal("Couldn't enqueue kernel.\n");
 
@@ -231,7 +231,7 @@ void
 freeCL(void) {
 	clReleaseMemObject(positions);
 	clReleaseMemObject(vertexBuf);
-	clReleaseKernel(kernel);
+	clReleaseKernel(genVerticesKernel);
 	clReleaseCommandQueue(queue);
 	clReleaseProgram(prog);
 	clReleaseContext(context);

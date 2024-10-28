@@ -1,7 +1,7 @@
 #define RADIUS 0.15f
 
 __kernel void
-balls(__global float2 *positions, __global float2 *vertices) {
+genVertices(__global float2 *positions, __global float2 *vertices) {
 	size_t ball, nsegs;
 	float2 center;
 	float theta;
