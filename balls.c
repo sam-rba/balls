@@ -24,6 +24,7 @@
 #define VMAX_INIT 0.1 /* Maximum initial velocity. */
 
 enum { WIDTH = 640, HEIGHT = 480 };
+enum { KEY_QUIT = 'q' };
 enum {
 	NBALLS = 8,
 	CIRCLE_POINTS = 16+2, /* +2 for center point and last point which overlaps with first point. */
@@ -40,6 +41,7 @@ void configureSharedData(void);
 void setKernelArgs(void);
 void display(void);
 void reshape(int w, int h);
+void keyboard(unsigned char key, int x, int y);
 void move(void);
 void collideWalls(void);
 void genVertices(void);
@@ -71,6 +73,7 @@ main(int argc, char *argv[]) {
 
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
+	glutKeyboardFunc(keyboard);
 
 	glutMainLoop();
 
@@ -303,6 +306,12 @@ display(void) {
 void
 reshape(int w, int h) {
 	glViewport(0, 0, (GLsizei) w, (GLsizei) h);
+}
+
+void
+keyboard(unsigned char key, int x, int y) {
+	if (key == KEY_QUIT)
+		glutDestroyWindow(glutGetWindow());
 }
 
 void
