@@ -13,10 +13,13 @@
 #define nelem(arr) (sizeof(arr) / sizeof(arr[0]))
 
 #define PROG_FILE "balls.cl"
+#define MOVE_KERNEL_FUNC "move"
 #define GEN_VERTICES_KERNEL_FUNC "genVertices"
 #define VERTEX_SHADER "balls.vert"
 #define FRAGMENT_SHADER "balls.frag"
-#define RMAX 0.25f
+
+#define RMAX 0.25f /* Maximum radius. */
+#define VMAX_INIT 0.1 /* Maximum initial velocity. */
 
 enum { WIDTH = 640, HEIGHT = 480 };
 enum {
@@ -29,7 +32,9 @@ const Rectangle bounds = { {-1.0, -1.0}, {1.0, 1.0} };
 void initGL(int argc, char *argv[]);
 void initCL(void);
 void setPositions(void);
+void setVelocities(void);
 void configureSharedData(void);
+void setKernelArgs(void);
 void execKernel(void);
 void freeCL(void);
 void freeGL(void);
@@ -43,9 +48,9 @@ float2 *noOverlapPositions(int n);
 static cl_context context;
 cl_program prog;
 static cl_command_queue queue;
-static cl_kernel genVerticesKernel;
+static cl_kernel moveKernel, genVerticesKernel;
 GLuint vao, vbo;
-cl_mem positions, vertexBuf;
+cl_mem positions, velocities, vertexBuf;
 
 int
 main(int argc, char *argv[]) {
@@ -54,7 +59,9 @@ main(int argc, char *argv[]) {
 	initCL();
 
 	setPositions();
+	setVelocities();
 	configureSharedData();
+	setKernelArgs();
 
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
@@ -146,10 +153,13 @@ initCL(void) {
 	if (err < 0)
 		sysfatal("Failed to create command queue.\n");
 
-	/* Create kernel. */
+	/* Create kernels. */
 	genVerticesKernel = clCreateKernel(prog, GEN_VERTICES_KERNEL_FUNC, &err);
 	if (err < 0)
-		sysfatal("Failed to create kernel: %d\n", err);
+		sysfatal("Failed to create kernel '%s': %d\n", GEN_VERTICES_KERNEL_FUNC, err);
+	moveKernel = clCreateKernel(prog, MOVE_KERNEL_FUNC, &err);
+	if (err < 0)
+		sysfatal("Failed to create kernel '%s': %d\n", MOVE_KERNEL_FUNC, err);
 }
 
 void
@@ -161,7 +171,7 @@ setPositions(void) {
 	hostPositions = noOverlapPositions(NBALLS);
 
 	/* Create device-side buffer. */
-	positions = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, NBALLS*2*sizeof(float), hostPositions, &err);
+	positions = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, NBALLS*sizeof(float2), hostPositions, &err);
 	if (err < 0)
 		sysfatal("Failed to allocate position buffer.\n");
 
@@ -171,6 +181,30 @@ setPositions(void) {
 		sysfatal("Failed to copy ball positions to device.\n");
 
 	free(hostPositions);
+}
+
+void
+setVelocities(void) {
+	float2 *hostVelocities;
+	int i, err;
+
+	/* Generate initial ball velocities. */
+	if ((hostVelocities = malloc(NBALLS*sizeof(float2))) == NULL)
+		sysfatal("Failed to allocate velocity array.\n");
+	for (i = 0; i < NBALLS; i++)
+		hostVelocities[i] = randVec(-VMAX_INIT, VMAX_INIT, -VMAX_INIT, VMAX_INIT);
+
+	/* Create device-side buffer. */
+	velocities = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, NBALLS*sizeof(float2), hostVelocities, &err);
+	if (err < 0)
+		sysfatal("Failed to allocate velocity buffer.\n");
+
+	/* Copy velocities to device. */
+	err = clEnqueueWriteBuffer(queue, velocities, CL_TRUE, 0, NBALLS*sizeof(float2), hostVelocities, 0, NULL, NULL);
+	if (err < 0)
+		sysfatal("Failed to copy ball velocities to device.\n");
+
+	free(hostVelocities);
 }
 
 void
@@ -192,16 +226,35 @@ configureSharedData(void) {
 	vertexBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vbo, &err);
 	if (err < 0)
 		sysfatal("Failed to create buffer object from VBO.\n");
+}
 
-	/* Set kernel arguments. */
-	err = clSetKernelArg(genVerticesKernel, 0, sizeof(positions), &positions);
+void
+setKernelArgs(void) {
+	int err;
+
+	err = clSetKernelArg(moveKernel, 0, sizeof(positions), &positions);
+	err |= clSetKernelArg(moveKernel, 1, sizeof(velocities), &velocities);
+
+	err |= clSetKernelArg(genVerticesKernel, 0, sizeof(positions), &positions);
 	err |= clSetKernelArg(genVerticesKernel, 1, sizeof(vertexBuf), &vertexBuf);
+
 	if (err < 0)
 		sysfatal("Failed to set kernel arguments.\n");
 }
 
 void
-execKernel(void) {
+move(void) {
+	size_t size;
+	int err;
+
+	size = NBALLS;
+	err = clEnqueueNDRangeKernel(queue, moveKernel, 1, NULL, &size, NULL, 0, NULL, NULL);
+	if (err < 0)
+		sysfatal("Couldn't enqueue kernel.\n");
+}
+
+void
+genVertices(void) {
 	int err;
 	size_t localSize, globalSize;
 	cl_event kernelEvent;
@@ -230,8 +283,12 @@ execKernel(void) {
 void
 freeCL(void) {
 	clReleaseMemObject(positions);
+	clReleaseMemObject(velocities);
 	clReleaseMemObject(vertexBuf);
+
+	clReleaseKernel(moveKernel);
 	clReleaseKernel(genVerticesKernel);
+
 	clReleaseCommandQueue(queue);
 	clReleaseProgram(prog);
 	clReleaseContext(context);
@@ -317,9 +374,11 @@ void
 display(void) {
 	int i;
 
+	move();
+
 	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
 
-	execKernel();
+	genVertices();
 
 	glBindVertexArray(vao);
 	for (i = 0; i < NBALLS; i++)
