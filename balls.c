@@ -19,7 +19,8 @@
 #define VERTEX_SHADER "balls.vert"
 #define FRAGMENT_SHADER "balls.frag"
 
-#define RMAX 0.25f /* Maximum radius. */
+#define RMIN 0.05 /* Minimum radius. */
+#define RMAX 0.10 /* Maximum radius. */
 #define VMAX_INIT 0.1 /* Maximum initial velocity. */
 
 enum { WIDTH = 640, HEIGHT = 480 };
@@ -34,6 +35,7 @@ void initGL(int argc, char *argv[]);
 void initCL(void);
 void setPositions(void);
 void setVelocities(void);
+void setRadii(void);
 void configureSharedData(void);
 void setKernelArgs(void);
 void display(void);
@@ -53,7 +55,7 @@ cl_program prog;
 static cl_command_queue queue;
 static cl_kernel moveKernel, collideWallsKernel, genVerticesKernel;
 GLuint vao, vbo;
-cl_mem positions, velocities, vertexBuf;
+cl_mem positions, velocities, radii, vertexBuf;
 
 int
 main(int argc, char *argv[]) {
@@ -63,6 +65,7 @@ main(int argc, char *argv[]) {
 
 	setPositions();
 	setVelocities();
+	setRadii();
 	configureSharedData();
 	setKernelArgs();
 
@@ -214,6 +217,30 @@ setVelocities(void) {
 }
 
 void
+setRadii(void) {
+	float *hostRadii;
+	int i, err;
+
+	/* Generate radii. */
+	if ((hostRadii = malloc(NBALLS*sizeof(float))) == NULL)
+		sysfatal("Failed to allocate radii array.\n");
+	for (i = 0; i < NBALLS; i++)
+		hostRadii[i] = randFloat(RMIN, RMAX);
+
+	/* Create device-side buffer. */
+	radii = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, NBALLS*sizeof(float), hostRadii, &err);
+	if (err <0)
+		sysfatal("Failed to allocate radii buffer.\n");
+
+	/* Copy radii to device. */
+	err = clEnqueueWriteBuffer(queue, radii, CL_TRUE, 0, NBALLS*sizeof(float), hostRadii, 0, NULL, NULL);
+	if (err < 0)
+		sysfatal("Failed to copy radii to device.\n");
+
+	free(hostRadii);
+}
+
+void
 configureSharedData(void) {
 	int err;
 
@@ -243,9 +270,11 @@ setKernelArgs(void) {
 
 	err |= clSetKernelArg(collideWallsKernel, 0, sizeof(positions), &positions);
 	err |= clSetKernelArg(collideWallsKernel, 1, sizeof(velocities), &velocities);
+	err |= clSetKernelArg(collideWallsKernel, 2, sizeof(radii), &radii);
 
 	err |= clSetKernelArg(genVerticesKernel, 0, sizeof(positions), &positions);
-	err |= clSetKernelArg(genVerticesKernel, 1, sizeof(vertexBuf), &vertexBuf);
+	err |= clSetKernelArg(genVerticesKernel, 1, sizeof(radii), &radii);
+	err |= clSetKernelArg(genVerticesKernel, 2, sizeof(vertexBuf), &vertexBuf);
 
 	if (err < 0)
 		sysfatal("Failed to set kernel arguments.\n");
@@ -329,6 +358,7 @@ void
 freeCL(void) {
 	clReleaseMemObject(positions);
 	clReleaseMemObject(velocities);
+	clReleaseMemObject(radii);
 	clReleaseMemObject(vertexBuf);
 
 	clReleaseKernel(moveKernel);

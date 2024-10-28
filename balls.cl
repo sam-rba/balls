@@ -1,5 +1,3 @@
-#define RADIUS 0.15f
-
 float
 min(float a, float b) {
 	if (a < b)
@@ -28,19 +26,22 @@ move(__global float2 *positions, __global float2 *velocities) {
 }
 
 __kernel void
-collideWalls(__global float2 *positions, __global float2 *velocities) {
-	float2 min, max, p, v;
+collideWalls(__global float2 *positions, __global float2 *velocities, __global float *radii) {
 	size_t id;
-
-	/* Set bounds. */
-	min.x = -1.0 + RADIUS;
-	min.y = -1.0 + RADIUS;
-	max.x = 1.0 - RADIUS;
-	max.y = 1.0 - RADIUS;
+	float2 p, v, min, max;
+	float r;
 
 	id = get_global_id(0);
+
 	p = positions[id];
 	v = velocities[id];
+	r = radii[id];
+
+	/* Set bounds. */
+	min.x = -1.0 + r;
+	min.y = -1.0 + r;
+	max.x = 1.0 - r;
+	max.y = 1.0 - r;
 
 	/* Check for collision with bounds. */
 	if (p.x <= min.x || p.x >= max.x) {
@@ -58,19 +59,20 @@ collideWalls(__global float2 *positions, __global float2 *velocities) {
 }
 
 __kernel void
-genVertices(__global float2 *positions, __global float2 *vertices) {
+genVertices(__global float2 *positions, __global float *radii, __global float2 *vertices) {
 	size_t ball, nsegs;
 	float2 center;
-	float theta;
+	float r, theta;
 
 	ball = get_group_id(0);
 	center = positions[ball];
+	r = radii[ball];
 
 	nsegs = get_local_size(0)-2; /* Number of edge segments. */
 	theta = 2.0f * M_PI_F * get_local_id(0) / nsegs;
 
-	vertices[get_global_id(0)].x = center.x + RADIUS * cos(theta);
-	vertices[get_global_id(0)].y = center.y + RADIUS * sin(theta);
+	vertices[get_global_id(0)].x = center.x + r * cos(theta);
+	vertices[get_global_id(0)].y = center.y + r * sin(theta);
 
 	vertices[ball*get_local_size(0)] = center;
 }
