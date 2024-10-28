@@ -1,3 +1,6 @@
+#define G_FACTOR 3600.0
+#define G (9.81 / G_FACTOR)
+
 float
 min(float a, float b) {
 	if (a < b)
@@ -22,6 +25,7 @@ move(__global float2 *positions, __global float2 *velocities) {
 	size_t id;
 
 	id = get_global_id(0);
+	velocities[id].y -= G;
 	positions[id] += velocities[id];
 }
 
