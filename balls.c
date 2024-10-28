@@ -14,6 +14,7 @@
 
 #define PROG_FILE "balls.cl"
 #define MOVE_KERNEL_FUNC "move"
+#define COLLIDE_WALLS_KERNEL_FUNC "collideWalls"
 #define GEN_VERTICES_KERNEL_FUNC "genVertices"
 #define VERTEX_SHADER "balls.vert"
 #define FRAGMENT_SHADER "balls.frag"
@@ -35,20 +36,22 @@ void setPositions(void);
 void setVelocities(void);
 void configureSharedData(void);
 void setKernelArgs(void);
-void execKernel(void);
+void display(void);
+void reshape(int w, int h);
+void move(void);
+void collideWalls(void);
+void genVertices(void);
 void freeCL(void);
 void freeGL(void);
 void initShaders(void);
 char *readFile(const char *filename, size_t *size);
 void compileShader(GLint shader);
-void display(void);
-void reshape(int w, int h);
 float2 *noOverlapPositions(int n);
 
 static cl_context context;
 cl_program prog;
 static cl_command_queue queue;
-static cl_kernel moveKernel, genVerticesKernel;
+static cl_kernel moveKernel, collideWallsKernel, genVerticesKernel;
 GLuint vao, vbo;
 cl_mem positions, velocities, vertexBuf;
 
@@ -157,6 +160,9 @@ initCL(void) {
 	genVerticesKernel = clCreateKernel(prog, GEN_VERTICES_KERNEL_FUNC, &err);
 	if (err < 0)
 		sysfatal("Failed to create kernel '%s': %d\n", GEN_VERTICES_KERNEL_FUNC, err);
+	collideWallsKernel = clCreateKernel(prog, COLLIDE_WALLS_KERNEL_FUNC, &err);
+	if (err < 0)
+		sysfatal("Failed to create kernel '%s': %d\n", COLLIDE_WALLS_KERNEL_FUNC, err);
 	moveKernel = clCreateKernel(prog, MOVE_KERNEL_FUNC, &err);
 	if (err < 0)
 		sysfatal("Failed to create kernel '%s': %d\n", MOVE_KERNEL_FUNC, err);
@@ -235,11 +241,39 @@ setKernelArgs(void) {
 	err = clSetKernelArg(moveKernel, 0, sizeof(positions), &positions);
 	err |= clSetKernelArg(moveKernel, 1, sizeof(velocities), &velocities);
 
+	err |= clSetKernelArg(collideWallsKernel, 0, sizeof(positions), &positions);
+	err |= clSetKernelArg(collideWallsKernel, 1, sizeof(velocities), &velocities);
+
 	err |= clSetKernelArg(genVerticesKernel, 0, sizeof(positions), &positions);
 	err |= clSetKernelArg(genVerticesKernel, 1, sizeof(vertexBuf), &vertexBuf);
 
 	if (err < 0)
 		sysfatal("Failed to set kernel arguments.\n");
+}
+
+void
+display(void) {
+	int i;
+
+	move();
+	collideWalls();
+
+	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
+
+	genVertices();
+
+	glBindVertexArray(vao);
+	for (i = 0; i < NBALLS; i++)
+		glDrawArrays(GL_TRIANGLE_FAN, i*CIRCLE_POINTS, CIRCLE_POINTS);
+
+	glBindVertexArray(0);
+	glutSwapBuffers();
+	glutPostRedisplay();
+}
+
+void
+reshape(int w, int h) {
+	glViewport(0, 0, (GLsizei) w, (GLsizei) h);
 }
 
 void
@@ -249,6 +283,17 @@ move(void) {
 
 	size = NBALLS;
 	err = clEnqueueNDRangeKernel(queue, moveKernel, 1, NULL, &size, NULL, 0, NULL, NULL);
+	if (err < 0)
+		sysfatal("Couldn't enqueue kernel.\n");
+}
+
+void
+collideWalls(void) {
+	size_t size;
+	int err;
+
+	size = NBALLS;
+	err = clEnqueueNDRangeKernel(queue, collideWallsKernel, 1, NULL, &size, NULL, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Couldn't enqueue kernel.\n");
 }
@@ -287,6 +332,7 @@ freeCL(void) {
 	clReleaseMemObject(vertexBuf);
 
 	clReleaseKernel(moveKernel);
+	clReleaseKernel(collideWallsKernel);
 	clReleaseKernel(genVerticesKernel);
 
 	clReleaseCommandQueue(queue);
@@ -368,30 +414,6 @@ compileShader(GLint shader) {
 		free(log);
 		exit(1);
 	}
-}
-
-void
-display(void) {
-	int i;
-
-	move();
-
-	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
-
-	genVertices();
-
-	glBindVertexArray(vao);
-	for (i = 0; i < NBALLS; i++)
-		glDrawArrays(GL_TRIANGLE_FAN, i*CIRCLE_POINTS, CIRCLE_POINTS);
-
-	glBindVertexArray(0);
-	glutSwapBuffers();
-	glutPostRedisplay();
-}
-
-void
-reshape(int w, int h) {
-	glViewport(0, 0, (GLsizei) w, (GLsizei) h);
 }
 
 float2 *
