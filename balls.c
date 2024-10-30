@@ -46,6 +46,7 @@ void setVelocities(void);
 void setRadii(void);
 void setCollisions(void);
 void configureSharedData(void);
+void configureColorBuffer(void);
 void setKernelArgs(void);
 void display(void);
 void reshape(int w, int h);
@@ -67,7 +68,7 @@ cl_context context;
 cl_program prog;
 cl_command_queue queue;
 cl_kernel moveKernel, collideWallsKernel, collideBallsKernel, genVerticesKernel;
-GLuint vao, vbo;
+GLuint vertexVAO, vertexVBO, colorVBO;
 cl_mem positions, velocities, radii, *collisions, vertexBuf;
 Partition collisionPartition;
 
@@ -82,6 +83,7 @@ main(int argc, char *argv[]) {
 	setRadii();
 	setCollisions();
 	configureSharedData();
+	configureColorBuffer();
 	setKernelArgs();
 
 	glutDisplayFunc(display);
@@ -298,20 +300,44 @@ configureSharedData(void) {
 	int err;
 
 	/* Create vertex array. */
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
+	glGenVertexArrays(1, &vertexVAO);
+	glBindVertexArray(vertexVAO);
 
 	/* Create vertex buffer. */
-	glGenBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glGenBuffers(1, &vertexVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexVBO);
 	glBufferData(GL_ARRAY_BUFFER, NBALLS*CIRCLE_POINTS*2*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
 
 	/* Create CL memory object from vertex buffer. */
-	vertexBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vbo, &err);
+	vertexBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vertexVBO, &err);
 	if (err < 0)
 		sysfatal("Failed to create buffer object from VBO.\n");
+}
+
+void
+configureColorBuffer(void) {
+	GLfloat (*colors)[3];
+	int i, j;
+
+	if ((colors = malloc(NBALLS*CIRCLE_POINTS*3*sizeof(GLfloat))) == NULL)
+		sysfatal("Failed to allocate color array.\n");
+	for (i = 0; i < NBALLS; i++) {
+		for (j = 0; j < CIRCLE_POINTS; j++) {
+			colors[i*CIRCLE_POINTS + j][0] = 1.0;
+			colors[i*CIRCLE_POINTS + j][1] = 0.0;
+			colors[i*CIRCLE_POINTS + j][2] = 0.0;
+		}
+	}
+
+	glGenBuffers(1, &colorVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
+	glBufferData(GL_ARRAY_BUFFER, NBALLS*CIRCLE_POINTS*3*sizeof(GLfloat), colors, GL_STATIC_DRAW);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(1);
+
+	free(colors);
 }
 
 void
@@ -349,7 +375,7 @@ display(void) {
 
 	genVertices();
 
-	glBindVertexArray(vao);
+	glBindVertexArray(vertexVAO);
 	for (i = 0; i < NBALLS; i++)
 		glDrawArrays(GL_TRIANGLE_FAN, i*CIRCLE_POINTS, CIRCLE_POINTS);
 	glBindVertexArray(0);
@@ -458,8 +484,9 @@ freeCL(void) {
 
 void
 freeGL(void) {
-	glDeleteBuffers(1, &vbo);
-	glDeleteBuffers(1, &vao);
+	glDeleteBuffers(1, &vertexVBO);
+	glDeleteBuffers(1, &vertexVAO);
+	glDeleteBuffers(1, &colorVBO);
 }
 
 void
