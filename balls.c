@@ -262,6 +262,8 @@ setCollisions(void) {
 
 	part = partitionCollisions(NBALLS);
 	collisionPartSize = part.size;
+	printf("Collision partition:\n");
+	printPartition(part);
 
 	/* Allocate array of buffers. */
 	if ((collisions = malloc(part.size*sizeof(cl_mem))) == NULL)
