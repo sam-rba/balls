@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "sysfatal.h"
 #include "balls.h"
@@ -50,6 +51,19 @@ freePartition(Partition part) {
 	while (part.size-- > 0)
 		free(part.cells[part.size].ballIndices);
 	free(part.cells);
+}
+
+void
+printPartition(Partition part) {
+	size_t i, j;
+
+	for (i = 0; i < part.size; i++) {
+		printf("{");
+		for (j = 0; j < part.cells[i].size; j++)
+			printf("(%lu, %lu), ", part.cells[i].ballIndices[j][0],
+				part.cells[i].ballIndices[j][1]);
+		printf("}\n");
+	}
 }
 
 /* Allocate an empty partition. Partition should be freed by the caller after use. */

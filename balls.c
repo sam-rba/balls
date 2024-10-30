@@ -1,3 +1,7 @@
+/* TODO: frame counter */
+
+
+
 #define CL_TARGET_OPENCL_VERSION 110
 
 #include <stdlib.h>
@@ -37,6 +41,7 @@ void initCL(void);
 void setPositions(void);
 void setVelocities(void);
 void setRadii(void);
+void setCollisions(void);
 void configureSharedData(void);
 void setKernelArgs(void);
 void display(void);
@@ -52,12 +57,13 @@ char *readFile(const char *filename, size_t *size);
 void compileShader(GLint shader);
 float2 *noOverlapPositions(int n);
 
-static cl_context context;
+cl_context context;
 cl_program prog;
-static cl_command_queue queue;
-static cl_kernel moveKernel, collideWallsKernel, genVerticesKernel;
+cl_command_queue queue;
+cl_kernel moveKernel, collideWallsKernel, genVerticesKernel;
 GLuint vao, vbo;
-cl_mem positions, velocities, radii, vertexBuf;
+cl_mem positions, velocities, radii, *collisions, vertexBuf;
+size_t collisionPartSize; /* Number of cells in the collision partition. */
 
 int
 main(int argc, char *argv[]) {
@@ -68,6 +74,7 @@ main(int argc, char *argv[]) {
 	setPositions();
 	setVelocities();
 	setRadii();
+	setCollisions();
 	configureSharedData();
 	setKernelArgs();
 
@@ -249,6 +256,32 @@ setRadii(void) {
 }
 
 void
+setCollisions(void) {
+	Partition part;
+	int i, err;
+
+	part = partitionCollisions(NBALLS);
+	collisionPartSize = part.size;
+
+	/* Allocate array of buffers. */
+	if ((collisions = malloc(part.size*sizeof(cl_mem))) == NULL)
+		sysfatal("Failed to allocate collision buffers.\n");
+	for (i = 0; i < part.size; i++) {
+		/* Create device-side buffer. */
+		collisions[i] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, part.cells[i].size*2*sizeof(size_t), part.cells[i].ballIndices, &err);
+		if (err < 0)
+			sysfatal("Failed to allocate collision buffer.\n");
+
+		/* Copy cell of partition to buffer. */
+		err = clEnqueueWriteBuffer(queue, collisions[i], CL_TRUE, 0, part.cells[i].size*2*sizeof(size_t), part.cells[i].ballIndices, 0, NULL, NULL);
+		if (err < 0)
+			sysfatal("Failed to copy collision partition to device.\n");
+	}
+
+	freePartition(part);
+}
+
+void
 configureSharedData(void) {
 	int err;
 
@@ -370,9 +403,14 @@ genVertices(void) {
 
 void
 freeCL(void) {
+	size_t i;
+
 	clReleaseMemObject(positions);
 	clReleaseMemObject(velocities);
 	clReleaseMemObject(radii);
+	for (i = 0; i < collisionPartSize; i++)
+		clReleaseMemObject(collisions[i]);
+	free(collisions);
 	clReleaseMemObject(vertexBuf);
 
 	clReleaseKernel(moveKernel);
