@@ -45,8 +45,10 @@ void setPositions(void);
 void setVelocities(void);
 void setRadii(void);
 void setCollisions(void);
-void configureSharedData(void);
-void configureColorBuffer(void);
+void genBuffers(void);
+void genVertexBuffer(void);
+void setColors(void);
+void configSharedData(void);
 void setKernelArgs(void);
 void display(void);
 void reshape(int w, int h);
@@ -82,8 +84,11 @@ main(int argc, char *argv[]) {
 	setVelocities();
 	setRadii();
 	setCollisions();
-	configureSharedData();
-	configureColorBuffer();
+
+	genBuffers();
+	setColors();
+	configSharedData();
+
 	setKernelArgs();
 
 	glutDisplayFunc(display);
@@ -295,29 +300,32 @@ setCollisions(void) {
 	}
 }
 
+/* Create GL vertex and color buffers. */
 void
-configureSharedData(void) {
-	int err;
-
-	/* Create vertex array. */
+genBuffers(void) {
 	glGenVertexArrays(1, &vertexVAO);
 	glBindVertexArray(vertexVAO);
 
-	/* Create vertex buffer. */
+	/* Generate vertex buffer. */
+	genVertexBuffer();
+
+	/* Generate color buffer. */
+	glGenBuffers(1, &colorVBO);
+}
+
+/* Generate GL vertex buffer. */
+void
+genVertexBuffer(void) {
 	glGenBuffers(1, &vertexVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexVBO);
 	glBufferData(GL_ARRAY_BUFFER, NBALLS*CIRCLE_POINTS*2*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
-
-	/* Create CL memory object from vertex buffer. */
-	vertexBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vertexVBO, &err);
-	if (err < 0)
-		sysfatal("Failed to create buffer object from VBO.\n");
 }
 
+/* Set ball colors in the GL vertex color buffer. */
 void
-configureColorBuffer(void) {
+setColors(void) {
 	GLfloat (*colors)[3];
 	int i, j;
 
@@ -331,13 +339,22 @@ configureColorBuffer(void) {
 		}
 	}
 
-	glGenBuffers(1, &colorVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
 	glBufferData(GL_ARRAY_BUFFER, NBALLS*CIRCLE_POINTS*3*sizeof(GLfloat), colors, GL_STATIC_DRAW);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(1);
 
 	free(colors);
+}
+
+/* Create CL memory object from vertex buffer. */
+void
+configSharedData(void) {
+	int err;
+
+	vertexBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vertexVBO, &err);
+	if (err < 0)
+		sysfatal("Failed to create buffer object from VBO.\n");
 }
 
 void
