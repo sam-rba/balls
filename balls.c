@@ -327,15 +327,19 @@ genVertexBuffer(void) {
 void
 setColors(void) {
 	GLfloat (*colors)[3];
+	GLfloat color[3];
 	int i, j;
 
 	if ((colors = malloc(NBALLS*CIRCLE_POINTS*3*sizeof(GLfloat))) == NULL)
 		sysfatal("Failed to allocate color array.\n");
 	for (i = 0; i < NBALLS; i++) {
+		color[0] = randFloat(0, 1);
+		color[1] = randFloat(0, 1);
+		color[2] = randFloat(0, 1);
 		for (j = 0; j < CIRCLE_POINTS; j++) {
-			colors[i*CIRCLE_POINTS + j][0] = 1.0;
-			colors[i*CIRCLE_POINTS + j][1] = 0.0;
-			colors[i*CIRCLE_POINTS + j][2] = 0.0;
+			colors[i*CIRCLE_POINTS + j][0] = color[0];
+			colors[i*CIRCLE_POINTS + j][1] = color[1];
+			colors[i*CIRCLE_POINTS + j][2] = color[2];
 		}
 	}
 
