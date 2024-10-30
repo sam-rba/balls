@@ -33,10 +33,8 @@ collideWalls(__global float2 *positions, __global float2 *velocities, __global f
 	r = radii[id];
 
 	/* Set bounds. */
-	min.x = -1.0 + r + FLT_EPSILON;
-	min.y = -1.0 + r + FLT_EPSILON;
-	max.x = 1.0 - r - FLT_EPSILON;
-	max.y = 1.0 - r - FLT_EPSILON;
+	min = -1.0f + r + FLT_EPSILON;
+	max = 1.0f - r - FLT_EPSILON;
 
 	/* Check for collision with bounds. */
 	if (p.x <= min.x || p.x >= max.x) {
