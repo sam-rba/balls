@@ -37,6 +37,7 @@ const Rectangle bounds = { {-1.0, -1.0}, {1.0, 1.0} };
 
 void initGL(int argc, char *argv[]);
 void initCL(void);
+cl_kernel createKernel(cl_program prog, const char *kernelFunc);
 void setPositions(void);
 void setVelocities(void);
 void setRadii(void);
@@ -194,22 +195,21 @@ initCL(void) {
 		sysfatal("Failed to create command queue.\n");
 
 	/* Create kernels. */
-	/* TODO: extract helper. */
-	moveKernel = clCreateKernel(prog, MOVE_KERNEL_FUNC, &err);
-	if (err < 0)
-		sysfatal("Failed to create kernel '%s': %d\n", MOVE_KERNEL_FUNC, err);
+	moveKernel = createKernel(prog, MOVE_KERNEL_FUNC);
+	collideWallsKernel = createKernel(prog, COLLIDE_WALLS_KERNEL_FUNC);
+	collideBallsKernel = createKernel(prog, COLLIDE_BALLS_KERNEL_FUNC);
+	genVerticesKernel = createKernel(prog, GEN_VERTICES_KERNEL_FUNC);
+}
 
-	collideWallsKernel = clCreateKernel(prog, COLLIDE_WALLS_KERNEL_FUNC, &err);
-	if (err < 0)
-		sysfatal("Failed to create kernel '%s': %d\n", COLLIDE_WALLS_KERNEL_FUNC, err);
+cl_kernel
+createKernel(cl_program prog, const char *kernelFunc) {
+	cl_kernel kernel;
+	int err;
 
-	collideBallsKernel = clCreateKernel(prog, COLLIDE_BALLS_KERNEL_FUNC, &err);
+	kernel = clCreateKernel(prog, kernelFunc, &err);
 	if (err < 0)
-		sysfatal("Failed to create kernel '%s': %d\n", COLLIDE_BALLS_KERNEL_FUNC, &err);
-
-	genVerticesKernel = clCreateKernel(prog, GEN_VERTICES_KERNEL_FUNC, &err);
-	if (err < 0)
-		sysfatal("Failed to create kernel '%s': %d\n", GEN_VERTICES_KERNEL_FUNC, err);
+		sysfatal("Failed to create kernel '%s': %d\n", kernelFunc, err);
+	return kernel;
 }
 
 void
