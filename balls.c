@@ -28,8 +28,8 @@
 
 enum { WIDTH = 640, HEIGHT = 480 };
 enum { KEY_QUIT = 'q' };
+enum { NBALLS_DEFAULT = 3 };
 enum {
-	NBALLS = 8,
 	CIRCLE_POINTS = 32+2, /* +2 for center point and last point which overlaps with first point. */
 };
 
@@ -62,6 +62,7 @@ float2 *noOverlapPositions(int n);
 void frameCount(void);
 void drawString(const char *str);
 
+int nBalls;
 cl_context context;
 cl_program prog;
 cl_command_queue queue;
@@ -72,6 +73,14 @@ Partition collisionPartition;
 
 int
 main(int argc, char *argv[]) {
+	nBalls = NBALLS_DEFAULT;
+	if (argc > 1) {
+		if (sscanf(argv[1], "%d", &nBalls) != 1 || nBalls < 1) {
+			printf("usage: balls [number of balls]\n");
+			return 1;
+		}
+	}
+
 	initGL(argc, argv);
 
 	initCL();
@@ -209,15 +218,15 @@ setPositions(void) {
 	int err;
 
 	/* Generate initial ball positions. */
-	hostPositions = noOverlapPositions(NBALLS);
+	hostPositions = noOverlapPositions(nBalls);
 
 	/* Create device-side buffer. */
-	positions = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, NBALLS*sizeof(float2), hostPositions, &err);
+	positions = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, nBalls*sizeof(float2), hostPositions, &err);
 	if (err < 0)
 		sysfatal("Failed to allocate position buffer.\n");
 
 	/* Copy positions to device. */
-	err = clEnqueueWriteBuffer(queue, positions, CL_TRUE, 0, NBALLS*sizeof(float2), hostPositions, 0, NULL, NULL);
+	err = clEnqueueWriteBuffer(queue, positions, CL_TRUE, 0, nBalls*sizeof(float2), hostPositions, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Failed to copy ball positions to device.\n");
 
@@ -230,18 +239,18 @@ setVelocities(void) {
 	int i, err;
 
 	/* Generate initial ball velocities. */
-	if ((hostVelocities = malloc(NBALLS*sizeof(float2))) == NULL)
+	if ((hostVelocities = malloc(nBalls*sizeof(float2))) == NULL)
 		sysfatal("Failed to allocate velocity array.\n");
-	for (i = 0; i < NBALLS; i++)
+	for (i = 0; i < nBalls; i++)
 		hostVelocities[i] = randVec(-VMAX_INIT, VMAX_INIT, -VMAX_INIT, VMAX_INIT);
 
 	/* Create device-side buffer. */
-	velocities = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, NBALLS*sizeof(float2), hostVelocities, &err);
+	velocities = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, nBalls*sizeof(float2), hostVelocities, &err);
 	if (err < 0)
 		sysfatal("Failed to allocate velocity buffer.\n");
 
 	/* Copy velocities to device. */
-	err = clEnqueueWriteBuffer(queue, velocities, CL_TRUE, 0, NBALLS*sizeof(float2), hostVelocities, 0, NULL, NULL);
+	err = clEnqueueWriteBuffer(queue, velocities, CL_TRUE, 0, nBalls*sizeof(float2), hostVelocities, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Failed to copy ball velocities to device.\n");
 
@@ -254,18 +263,18 @@ setRadii(void) {
 	int i, err;
 
 	/* Generate radii. */
-	if ((hostRadii = malloc(NBALLS*sizeof(float))) == NULL)
+	if ((hostRadii = malloc(nBalls*sizeof(float))) == NULL)
 		sysfatal("Failed to allocate radii array.\n");
-	for (i = 0; i < NBALLS; i++)
+	for (i = 0; i < nBalls; i++)
 		hostRadii[i] = randFloat(RMIN, RMAX);
 
 	/* Create device-side buffer. */
-	radii = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, NBALLS*sizeof(float), hostRadii, &err);
+	radii = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, nBalls*sizeof(float), hostRadii, &err);
 	if (err <0)
 		sysfatal("Failed to allocate radii buffer.\n");
 
 	/* Copy radii to device. */
-	err = clEnqueueWriteBuffer(queue, radii, CL_TRUE, 0, NBALLS*sizeof(float), hostRadii, 0, NULL, NULL);
+	err = clEnqueueWriteBuffer(queue, radii, CL_TRUE, 0, nBalls*sizeof(float), hostRadii, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Failed to copy radii to device.\n");
 
@@ -276,7 +285,7 @@ void
 setCollisions(void) {
 	int i, err;
 
-	collisionPartition = partitionCollisions(NBALLS);
+	collisionPartition = partitionCollisions(nBalls);
 	printf("Collision partition:\n");
 	printPartition(collisionPartition);
 
@@ -314,7 +323,7 @@ void
 genVertexBuffer(void) {
 	glGenBuffers(1, &vertexVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexVBO);
-	glBufferData(GL_ARRAY_BUFFER, NBALLS*CIRCLE_POINTS*2*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, nBalls*CIRCLE_POINTS*2*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
 }
@@ -326,9 +335,9 @@ setColors(void) {
 	GLfloat color[3];
 	int i, j;
 
-	if ((colors = malloc(NBALLS*CIRCLE_POINTS*3*sizeof(GLfloat))) == NULL)
+	if ((colors = malloc(nBalls*CIRCLE_POINTS*3*sizeof(GLfloat))) == NULL)
 		sysfatal("Failed to allocate color array.\n");
-	for (i = 0; i < NBALLS; i++) {
+	for (i = 0; i < nBalls; i++) {
 		color[0] = randFloat(0, 1);
 		color[1] = randFloat(0, 1);
 		color[2] = randFloat(0, 1);
@@ -340,7 +349,7 @@ setColors(void) {
 	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
-	glBufferData(GL_ARRAY_BUFFER, NBALLS*CIRCLE_POINTS*3*sizeof(GLfloat), colors, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, nBalls*CIRCLE_POINTS*3*sizeof(GLfloat), colors, GL_STATIC_DRAW);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(1);
 
@@ -393,7 +402,7 @@ display(void) {
 	genVertices();
 
 	glBindVertexArray(vertexVAO);
-	for (i = 0; i < NBALLS; i++)
+	for (i = 0; i < nBalls; i++)
 		glDrawArrays(GL_TRIANGLE_FAN, i*CIRCLE_POINTS, CIRCLE_POINTS);
 	glBindVertexArray(0);
 
@@ -419,7 +428,7 @@ move(void) {
 	size_t size;
 	int err;
 
-	size = NBALLS;
+	size = nBalls;
 	err = clEnqueueNDRangeKernel(queue, moveKernel, 1, NULL, &size, NULL, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Couldn't enqueue kernel.\n");
@@ -430,7 +439,7 @@ collideWalls(void) {
 	size_t size;
 	int err;
 
-	size = NBALLS;
+	size = nBalls;
 	err = clEnqueueNDRangeKernel(queue, collideWallsKernel, 1, NULL, &size, NULL, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Couldn't enqueue kernel.\n");
@@ -463,7 +472,7 @@ genVertices(void) {
 		sysfatal("Couldn't acquire the GL objects.\n");
 
 	localSize = CIRCLE_POINTS;
-	globalSize = NBALLS * localSize;
+	globalSize = nBalls * localSize;
 	err = clEnqueueNDRangeKernel(queue, genVerticesKernel, 1, NULL, &globalSize, &localSize, 0, NULL, &kernelEvent);
 	if (err < 0)
 		sysfatal("Couldn't enqueue kernel.\n");
@@ -576,6 +585,10 @@ compileShader(GLint shader) {
 	}
 }
 
+/*
+ * Generate n circle coordinates such that none overlap even if all circles
+ * have the maximum radius.
+ */
 float2 *
 noOverlapPositions(int n) {
 	float2 *ps;
