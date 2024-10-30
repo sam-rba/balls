@@ -19,6 +19,7 @@
 #define PROG_FILE "balls.cl"
 #define MOVE_KERNEL_FUNC "move"
 #define COLLIDE_WALLS_KERNEL_FUNC "collideWalls"
+#define COLLIDE_BALLS_KERNEL_FUNC "collideBalls"
 #define GEN_VERTICES_KERNEL_FUNC "genVertices"
 #define VERTEX_SHADER "balls.vert"
 #define FRAGMENT_SHADER "balls.frag"
@@ -49,6 +50,7 @@ void reshape(int w, int h);
 void keyboard(unsigned char key, int x, int y);
 void move(void);
 void collideWalls(void);
+void collideBalls(void);
 void genVertices(void);
 void freeCL(void);
 void freeGL(void);
@@ -60,10 +62,10 @@ float2 *noOverlapPositions(int n);
 cl_context context;
 cl_program prog;
 cl_command_queue queue;
-cl_kernel moveKernel, collideWallsKernel, genVerticesKernel;
+cl_kernel moveKernel, collideWallsKernel, collideBallsKernel, genVerticesKernel;
 GLuint vao, vbo;
 cl_mem positions, velocities, radii, *collisions, vertexBuf;
-size_t collisionPartSize; /* Number of cells in the collision partition. */
+Partition collisionPartition;
 
 int
 main(int argc, char *argv[]) {
@@ -86,6 +88,7 @@ main(int argc, char *argv[]) {
 
 	freeCL();
 	freeGL();
+	freePartition(collisionPartition);
 
 	return 0;
 }
@@ -175,15 +178,22 @@ initCL(void) {
 		sysfatal("Failed to create command queue.\n");
 
 	/* Create kernels. */
-	genVerticesKernel = clCreateKernel(prog, GEN_VERTICES_KERNEL_FUNC, &err);
-	if (err < 0)
-		sysfatal("Failed to create kernel '%s': %d\n", GEN_VERTICES_KERNEL_FUNC, err);
-	collideWallsKernel = clCreateKernel(prog, COLLIDE_WALLS_KERNEL_FUNC, &err);
-	if (err < 0)
-		sysfatal("Failed to create kernel '%s': %d\n", COLLIDE_WALLS_KERNEL_FUNC, err);
+	/* TODO: extract helper. */
 	moveKernel = clCreateKernel(prog, MOVE_KERNEL_FUNC, &err);
 	if (err < 0)
 		sysfatal("Failed to create kernel '%s': %d\n", MOVE_KERNEL_FUNC, err);
+
+	collideWallsKernel = clCreateKernel(prog, COLLIDE_WALLS_KERNEL_FUNC, &err);
+	if (err < 0)
+		sysfatal("Failed to create kernel '%s': %d\n", COLLIDE_WALLS_KERNEL_FUNC, err);
+
+	collideBallsKernel = clCreateKernel(prog, COLLIDE_BALLS_KERNEL_FUNC, &err);
+	if (err < 0)
+		sysfatal("Failed to create kernel '%s': %d\n", COLLIDE_BALLS_KERNEL_FUNC, &err);
+
+	genVerticesKernel = clCreateKernel(prog, GEN_VERTICES_KERNEL_FUNC, &err);
+	if (err < 0)
+		sysfatal("Failed to create kernel '%s': %d\n", GEN_VERTICES_KERNEL_FUNC, err);
 }
 
 void
@@ -257,30 +267,26 @@ setRadii(void) {
 
 void
 setCollisions(void) {
-	Partition part;
 	int i, err;
 
-	part = partitionCollisions(NBALLS);
-	collisionPartSize = part.size;
+	collisionPartition = partitionCollisions(NBALLS);
 	printf("Collision partition:\n");
-	printPartition(part);
+	printPartition(collisionPartition);
 
 	/* Allocate array of buffers. */
-	if ((collisions = malloc(part.size*sizeof(cl_mem))) == NULL)
+	if ((collisions = malloc(collisionPartition.size*sizeof(cl_mem))) == NULL)
 		sysfatal("Failed to allocate collision buffers.\n");
-	for (i = 0; i < part.size; i++) {
+	for (i = 0; i < collisionPartition.size; i++) {
 		/* Create device-side buffer. */
-		collisions[i] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, part.cells[i].size*2*sizeof(size_t), part.cells[i].ballIndices, &err);
+		collisions[i] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, collisionPartition.cells[i].size*2*sizeof(size_t), collisionPartition.cells[i].ballIndices, &err);
 		if (err < 0)
 			sysfatal("Failed to allocate collision buffer.\n");
 
 		/* Copy cell of partition to buffer. */
-		err = clEnqueueWriteBuffer(queue, collisions[i], CL_TRUE, 0, part.cells[i].size*2*sizeof(size_t), part.cells[i].ballIndices, 0, NULL, NULL);
+		err = clEnqueueWriteBuffer(queue, collisions[i], CL_TRUE, 0, collisionPartition.cells[i].size*2*sizeof(size_t), collisionPartition.cells[i].ballIndices, 0, NULL, NULL);
 		if (err < 0)
 			sysfatal("Failed to copy collision partition to device.\n");
 	}
-
-	freePartition(part);
 }
 
 void
@@ -315,6 +321,10 @@ setKernelArgs(void) {
 	err |= clSetKernelArg(collideWallsKernel, 1, sizeof(velocities), &velocities);
 	err |= clSetKernelArg(collideWallsKernel, 2, sizeof(radii), &radii);
 
+	err |= clSetKernelArg(collideBallsKernel, 1, sizeof(positions), &positions);
+	err |= clSetKernelArg(collideBallsKernel, 2, sizeof(velocities), &velocities);
+	err |= clSetKernelArg(collideBallsKernel, 3, sizeof(radii), &radii);
+
 	err |= clSetKernelArg(genVerticesKernel, 0, sizeof(positions), &positions);
 	err |= clSetKernelArg(genVerticesKernel, 1, sizeof(radii), &radii);
 	err |= clSetKernelArg(genVerticesKernel, 2, sizeof(vertexBuf), &vertexBuf);
@@ -329,6 +339,7 @@ display(void) {
 
 	move();
 	collideWalls();
+	collideBalls();
 
 	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
 
@@ -377,6 +388,20 @@ collideWalls(void) {
 }
 
 void
+collideBalls(void) {
+	int i, err;
+
+	for (i = 0; i < collisionPartition.size; i++) {
+		err = clSetKernelArg(collideBallsKernel, 0, sizeof(collisions[i]), collisions+i);
+		if (err < 0)
+			sysfatal("Failed to set argument of %s kernel.\n", COLLIDE_BALLS_KERNEL_FUNC);
+		err = clEnqueueNDRangeKernel(queue, collideBallsKernel, 1, NULL, &collisionPartition.cells[i].size, NULL, 0, NULL, NULL);
+		if (err < 0)
+			sysfatal("Couldn't enqueue kernel.\n");
+	}
+}
+
+void
 genVertices(void) {
 	int err;
 	size_t localSize, globalSize;
@@ -410,13 +435,14 @@ freeCL(void) {
 	clReleaseMemObject(positions);
 	clReleaseMemObject(velocities);
 	clReleaseMemObject(radii);
-	for (i = 0; i < collisionPartSize; i++)
+	for (i = 0; i < collisionPartition.size; i++)
 		clReleaseMemObject(collisions[i]);
 	free(collisions);
 	clReleaseMemObject(vertexBuf);
 
 	clReleaseKernel(moveKernel);
 	clReleaseKernel(collideWallsKernel);
+	clReleaseKernel(collideBallsKernel);
 	clReleaseKernel(genVerticesKernel);
 
 	clReleaseCommandQueue(queue);
