@@ -129,8 +129,13 @@ initCL(void) {
 	#endif
 
 	/* Get GPU device. */
-	if (clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, NULL) < 0)
-		sysfatal("No GPUs available.\n");
+	err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, NULL);
+	if (err < 0) {
+		fprintf(stderr, "No GPU available, falling back to CPU.\n");
+		err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 1, &device, NULL);
+		if (err < 0)
+			sysfatal("No CL devices available.\n");
+	}
 
 	/* Create context. */
 	context = clCreateContext(properties, 1, &device, NULL, NULL, &err);
