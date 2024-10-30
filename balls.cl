@@ -1,6 +1,6 @@
-#define G_FACTOR 3600.0
-#define G (9.81 / G_FACTOR)
-#define DENSITY 1500.0
+#define G_FACTOR 3600.0f
+#define G (9.81f / G_FACTOR)
+#define DENSITY 1500.0f
 
 float mass(float radius);
 int isCollision(float2 p1, float r1, float2 p2, float r2);
