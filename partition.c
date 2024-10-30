@@ -141,11 +141,7 @@ removeEdge(Graph g, size_t edge[2]) {
 				g.edges[j-1][1] = g.edges[j][1];
 			}
 
-			/* Shrink array. */
-			if ((g.edges = realloc(g.edges, (g.nEdges-1)*2*sizeof(size_t))) == NULL)
-				sysfatal("Failed to reallocate graph edge array.\n");
 			g.nEdges--;
-
 			break;
 		}
 	}
