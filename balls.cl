@@ -65,8 +65,8 @@ collideBalls(
 	float r1, r2, m1, m2;
 
 	id = get_global_id(0);
-	i1 = ballIndices[id];
-	i2 = ballIndices[id+1];
+	i1 = ballIndices[2*id];
+	i2 = ballIndices[2*id+1];
 
 	p1 = positions[i1];
 	p2 = positions[i2];
