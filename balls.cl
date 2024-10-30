@@ -1,7 +1,6 @@
 #define G_FACTOR 3600.0
 #define G (9.81 / G_FACTOR)
 #define DENSITY 1500.0
-#define EPSILON 1e-8 /* Account for FP rounding error. */
 
 float mass(float radius);
 int isCollision(float2 p1, float r1, float2 p2, float r2);
@@ -34,10 +33,10 @@ collideWalls(__global float2 *positions, __global float2 *velocities, __global f
 	r = radii[id];
 
 	/* Set bounds. */
-	min.x = -1.0 + r + EPSILON;
-	min.y = -1.0 + r + EPSILON;
-	max.x = 1.0 - r - EPSILON;
-	max.y = 1.0 - r - EPSILON;
+	min.x = -1.0 + r + FLT_EPSILON;
+	min.y = -1.0 + r + FLT_EPSILON;
+	max.x = 1.0 - r - FLT_EPSILON;
+	max.y = 1.0 - r - FLT_EPSILON;
 
 	/* Check for collision with bounds. */
 	if (p.x <= min.x || p.x >= max.x) {
@@ -123,7 +122,7 @@ isCollision(float2 p1, float r1, float2 p2, float r2) {
 	float rhs;
 
 	dist = p1 - p2;
-	rhs = r1 + r2 + EPSILON;
+	rhs = r1 + r2 + FLT_EPSILON;
 	return (dist.x*dist.x + dist.y*dist.y) <= rhs*rhs;
 }
 
@@ -134,8 +133,8 @@ setPosition(float2 *p1, float r1, float2 *p2, float r2) {
 
 	mid = (*p1 + *p2) / 2.0f;
 	n = unitNorm(*p2 - *p1);
-	*p1 = mid - (n*r1 + EPSILON);
-	*p2 = mid + (n*r2 + EPSILON);
+	*p1 = mid - (n*r1 + FLT_EPSILON);
+	*p2 = mid + (n*r2 + FLT_EPSILON);
 }
 
 /* Return the velocity of ball 1 after colliding with ball 2. */
