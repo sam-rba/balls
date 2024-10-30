@@ -6,6 +6,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
+#include <string.h>
 #include <GL/glew.h>
 #include <GL/glut.h>
 #include <GL/glx.h>
@@ -58,6 +60,8 @@ void initShaders(void);
 char *readFile(const char *filename, size_t *size);
 void compileShader(GLint shader);
 float2 *noOverlapPositions(int n);
+void frameCount(void);
+void drawString(const char *str);
 
 cl_context context;
 cl_program prog;
@@ -348,8 +352,10 @@ display(void) {
 	glBindVertexArray(vao);
 	for (i = 0; i < NBALLS; i++)
 		glDrawArrays(GL_TRIANGLE_FAN, i*CIRCLE_POINTS, CIRCLE_POINTS);
-
 	glBindVertexArray(0);
+
+	frameCount();
+
 	glutSwapBuffers();
 	glutPostRedisplay();
 }
@@ -548,4 +554,37 @@ noOverlapPositions(int n) {
 	}
 
 	return ps;
+}
+
+void
+frameCount(void) {
+	static int fps = 0;
+	static int nFrames = 0;
+	static time_t t0 = 0;
+	static char str[16];
+	time_t t1;
+
+	t1 = time(NULL);
+	if (t1 > t0) {
+		fps = nFrames;
+		nFrames = 0;
+		t0 = t1;
+	}
+
+	snprintf(str, nelem(str), "%d FPS", fps);
+	drawString(str);
+
+	nFrames++;
+}
+
+void
+drawString(const char *str) {
+	int i, n;
+
+	glColor3f(0, 1, 0);
+	glRasterPos2f(0.5, 0.5);
+
+	n = strlen(str);
+	for (i = 0; i < n; i++)
+		glutBitmapCharacter(GLUT_BITMAP_8_BY_13, str[i]);
 }
