@@ -1,7 +1,3 @@
-/* TODO: frame counter */
-
-
-
 #define CL_TARGET_OPENCL_VERSION 110
 
 #include <stdlib.h>
