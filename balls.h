@@ -25,6 +25,7 @@ void printPartition(Partition part);
 
 int isCollision(Vector p1, float r1, Vector p2, float r2);
 Rectangle insetRect(Rectangle r, float n);
+Vector *noOverlapPositions(int n, Rectangle bounds, float radius);
 
 float randFloat(float lo, float hi);
 Vector randPtInRect(Rectangle r);

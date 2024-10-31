@@ -59,7 +59,6 @@ void freeGL(void);
 void initShaders(void);
 char *readFile(const char *filename, size_t *size);
 void compileShader(GLint shader);
-Vector *noOverlapPositions(int n);
 void frameCount(void);
 void drawString(const char *str);
 
@@ -219,7 +218,7 @@ setPositions(void) {
 	int err;
 
 	/* Generate initial ball positions. */
-	hostPositions = noOverlapPositions(nBalls);
+	hostPositions = noOverlapPositions(nBalls, bounds, RMAX);
 	hostPositionBuf = flatten(hostPositions);
 	free(hostPositions);
 
@@ -588,34 +587,6 @@ compileShader(GLint shader) {
 		free(log);
 		exit(1);
 	}
-}
-
-/*
- * Generate n circle coordinates such that none overlap even if all circles
- * have the maximum radius.
- */
-Vector *
-noOverlapPositions(int n) {
-	Vector *ps;
-	Rectangle r;
-	int i, j;
-
-	if ((ps = malloc(n*sizeof(Vector))) == NULL)
-		sysfatal("Failed to allocate position array.\n");
-
-	r = insetRect(bounds, RMAX);
-	for (i = 0; i < n; i++) {
-		ps[i] = randPtInRect(r);
-		for (j = 0; j < i; j++)
-			if (isCollision(ps[j], RMAX, ps[i], RMAX))
-				break;
-		if (j < i) { /* Overlapping. */
-			i--;
-			continue;
-		}
-	}
-
-	return ps;
 }
 
 void
