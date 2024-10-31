@@ -3,18 +3,22 @@
 #include "balls.h"
 
 int
-isCollision(float2 p1, float r1, float2 p2, float r2) {
-	float2 dist;
-	float rhs;
+isCollision(Vector p1, float r1, Vector p2, float r2) {
+	float dx, dy, rhs;
 
-	dist = p1 - p2;
+	dx = p1.x - p2.x;
+	dy = p1.y - p2.y;
 	rhs = r1 + r2;
-	return (dist[0]*dist[0] + dist[1]*dist[1]) <= rhs*rhs;
+	return (dx*dx + dy*dy) <= rhs*rhs;
 }
 
 Rectangle
 insetRect(Rectangle r, float n) {
-	r.min += n;
-	r.max -= n;
+	r.min.x += n;
+	r.min.y += n;
+
+	r.max.y -= n;
+	r.max.y -= n;
+
 	return r;
 }

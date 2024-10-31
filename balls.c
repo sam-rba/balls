@@ -59,7 +59,7 @@ void freeGL(void);
 void initShaders(void);
 char *readFile(const char *filename, size_t *size);
 void compileShader(GLint shader);
-float2 *noOverlapPositions(int n);
+Vector *noOverlapPositions(int n);
 void frameCount(void);
 void drawString(const char *str);
 
@@ -214,43 +214,48 @@ createKernel(cl_program prog, const char *kernelFunc) {
 
 void
 setPositions(void) {
-	float2 *hostPositions;
+	Vector *hostPositions;
+	int *hostPositionBuf;
 	int err;
 
 	/* Generate initial ball positions. */
 	hostPositions = noOverlapPositions(nBalls);
+	hostPositionBuf = flatten(hostPositions);
+	free(hostPositions);
 
 	/* Create device-side buffer. */
-	positions = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, nBalls*sizeof(float2), hostPositions, &err);
+	positions = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, nBalls*2*sizeof(float), hostPositionBuf, &err);
 	if (err < 0)
 		sysfatal("Failed to allocate position buffer.\n");
 
 	/* Copy positions to device. */
-	err = clEnqueueWriteBuffer(queue, positions, CL_TRUE, 0, nBalls*sizeof(float2), hostPositions, 0, NULL, NULL);
+	err = clEnqueueWriteBuffer(queue, positions, CL_TRUE, 0, nBalls*2*sizeof(float), hostPositionBuf, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Failed to copy ball positions to device.\n");
 
-	free(hostPositions);
+	free(hostPositionBuf);
 }
 
 void
 setVelocities(void) {
-	float2 *hostVelocities;
+	float *hostVelocities;
 	int i, err;
 
 	/* Generate initial ball velocities. */
-	if ((hostVelocities = malloc(nBalls*sizeof(float2))) == NULL)
+	if ((hostVelocities = malloc(nBalls*2*sizeof(float))) == NULL)
 		sysfatal("Failed to allocate velocity array.\n");
-	for (i = 0; i < nBalls; i++)
-		hostVelocities[i] = randVec(-VMAX_INIT, VMAX_INIT, -VMAX_INIT, VMAX_INIT);
+	for (i = 0; i < nBalls; i++) {
+		hostVelocities[2*i] = randFloat(-VMAX_INIT, VMAX_INIT);
+		hostVelocities[2*i+1] = randFloat(-VMAX_INIT, VMAX_INIT);
+	}
 
 	/* Create device-side buffer. */
-	velocities = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, nBalls*sizeof(float2), hostVelocities, &err);
+	velocities = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, nBalls*2*sizeof(float), hostVelocities, &err);
 	if (err < 0)
 		sysfatal("Failed to allocate velocity buffer.\n");
 
 	/* Copy velocities to device. */
-	err = clEnqueueWriteBuffer(queue, velocities, CL_TRUE, 0, nBalls*sizeof(float2), hostVelocities, 0, NULL, NULL);
+	err = clEnqueueWriteBuffer(queue, velocities, CL_TRUE, 0, nBalls*2*sizeof(float), hostVelocities, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Failed to copy ball velocities to device.\n");
 
@@ -589,13 +594,13 @@ compileShader(GLint shader) {
  * Generate n circle coordinates such that none overlap even if all circles
  * have the maximum radius.
  */
-float2 *
+Vector *
 noOverlapPositions(int n) {
-	float2 *ps;
+	Vector *ps;
 	Rectangle r;
 	int i, j;
 
-	if ((ps = malloc(n*sizeof(float2))) == NULL)
+	if ((ps = malloc(n*sizeof(Vector))) == NULL)
 		sysfatal("Failed to allocate position array.\n");
 
 	r = insetRect(bounds, RMAX);

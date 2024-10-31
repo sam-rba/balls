@@ -18,17 +18,11 @@ randFloat(float lo, float hi) {
 	return lo + r*diff;
 }
 
-float2
+Vector
 randPtInRect(Rectangle r) {
-	float2 pt = {
-		randFloat(r.min[0], r.max[0]),
-		randFloat(r.min[1], r.max[1])
+	Vector pt = {
+		randFloat(r.min.x, r.max.x),
+		randFloat(r.min.y, r.max.y)
 	};
 	return pt;
-}
-
-float2
-randVec(float xmin, float xmax, float ymin, float ymax) {
-	float2 v = {randFloat(xmin, xmax), randFloat(ymin, ymax)};
-	return v;
 }
