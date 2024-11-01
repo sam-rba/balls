@@ -61,6 +61,7 @@ char *readFile(const char *filename, size_t *size);
 void compileShader(GLint shader);
 void frameCount(void);
 void drawString(const char *str);
+float *flatten(Vector *vs, int n);
 
 int nBalls;
 cl_context context;
@@ -214,12 +215,12 @@ createKernel(cl_program prog, const char *kernelFunc) {
 void
 setPositions(void) {
 	Vector *hostPositions;
-	int *hostPositionBuf;
+	float *hostPositionBuf;
 	int err;
 
 	/* Generate initial ball positions. */
 	hostPositions = noOverlapPositions(nBalls, bounds, RMAX);
-	hostPositionBuf = flatten(hostPositions);
+	hostPositionBuf = flatten(hostPositions, nBalls);
 	free(hostPositions);
 
 	/* Create device-side buffer. */
@@ -620,4 +621,21 @@ drawString(const char *str) {
 	n = strlen(str);
 	for (i = 0; i < n; i++)
 		glutBitmapCharacter(GLUT_BITMAP_8_BY_13, str[i]);
+}
+
+/*
+ * Flatten an array of n vectors into an array of 2n floats. vs[i].x is at
+ * position 2i+0, and vs[i].y is at position 2i+1 in the returned array.
+ */
+float *
+flatten(Vector *vs, int n) {
+	float *arr;
+
+	if ((arr = malloc(2*n*sizeof(float))) == NULL)
+		sysfatal("Failed to allocate vector array.\n");
+	while (n-- > 0) {
+		arr[2*n+0] = vs[n].x;
+		arr[2*n+1] = vs[n].y;
+	}
+	return arr;
 }
