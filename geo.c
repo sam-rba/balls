@@ -28,15 +28,14 @@ insetRect(Rectangle r, float n) {
 Vector *
 noOverlapPositions(int n, Rectangle bounds, float radius) {
 	Vector *ps;
-	Rectangle r;
 	int i, j;
 
 	if ((ps = malloc(n*sizeof(Vector))) == NULL)
 		sysfatal("Failed to allocate position array.\n");
 
-	r = insetRect(bounds, radius);
+	bounds = insetRect(bounds, radius);
 	for (i = 0; i < n; i++) {
-		ps[i] = randPtInRect(r);
+		ps[i] = randPtInRect(bounds);
 		for (j = 0; j < i; j++)
 			if (isCollision(ps[j], radius, ps[i], radius))
 				break;

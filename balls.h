@@ -1,5 +1,5 @@
 typedef struct {
-	int x, y;
+	float x, y;
 } Vector;
 
 typedef struct {
