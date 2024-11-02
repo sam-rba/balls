@@ -638,8 +638,8 @@ void
 drawString(const char *str) {
 	size_t i, n;
 
-	glColor3f(0, 1, 0);
-	glRasterPos2f(0.5, 0.5);
+	glColor3f(0, 0, 0);
+	glRasterPos2f(-0.9, 0.9);
 
 	n = strlen(str);
 	for (i = 0; i < n; i++)
