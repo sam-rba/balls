@@ -6,8 +6,10 @@
 #include <string.h>
 #include <GL/glew.h>
 #include <GL/glut.h>
-#include <GL/glx.h>
 #include <CL/cl_gl.h>
+#ifndef WINDOWS
+#include <GL/glx.h>
+#endif
 
 #include "sysfatal.h"
 #include "balls.h"
