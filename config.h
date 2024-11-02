@@ -1,0 +1,2 @@
+/* #define WINDOWS 1 */
+#define CL_TARGET_OPENCL_VERSION 110

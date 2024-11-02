@@ -14,4 +14,4 @@ balls: ${OBJ}
 clean:
 	rm -f *.o balls
 
-${OBJ}: sysfatal.h balls.h
+${OBJ}: sysfatal.h balls.h config.h
