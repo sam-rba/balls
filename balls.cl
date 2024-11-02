@@ -1,5 +1,5 @@
-#define G_FACTOR 3600.0f
-#define G (9.81f / G_FACTOR)
+#define FPS 60.0f
+#define G (9.81f / FPS / FPS)
 #define DENSITY 1500.0f
 
 float mass(float radius);

@@ -28,7 +28,13 @@
 #define RMAX 0.10 /* Maximum radius. */
 #define VMAX_INIT 0.05 /* Maximum initial velocity. */
 
-enum { WIDTH = 640, HEIGHT = 480 };
+enum {
+	WIDTH = 640,
+	HEIGHT = 640,
+	FPS = 60,
+	MS_PER_S = 1000,
+	FRAME_TIME_MS = MS_PER_S / FPS,
+ };
 enum { KEY_QUIT = 'q' };
 enum { NBALLS_DEFAULT = 3 };
 enum {
@@ -49,6 +55,7 @@ void genVertexBuffer(void);
 void setColors(void);
 void configSharedData(void);
 void setKernelArgs(void);
+void animate(int v);
 void display(void);
 void reshape(int w, int h);
 void keyboard(unsigned char key, int x, int y);
@@ -102,6 +109,7 @@ main(int argc, char *argv[]) {
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
 	glutKeyboardFunc(keyboard);
+	glutTimerFunc(0, animate, 0);
 
 	glutMainLoop();
 
@@ -397,12 +405,26 @@ setKernelArgs(void) {
 }
 
 void
-display(void) {
-	int i;
+animate(int v) {
+	clock_t tstart, elapsed;
+	unsigned int nextFrame;
+
+	tstart = clock();
 
 	move();
 	collideBalls();
 	collideWalls();
+
+	display();
+
+	elapsed = (clock() - tstart) / (CLOCKS_PER_SEC / MS_PER_S);
+	nextFrame = (elapsed > FRAME_TIME_MS) ? 0 : FRAME_TIME_MS-elapsed;
+	glutTimerFunc(nextFrame, animate, 0);
+}
+
+void
+display(void) {
+	int i;
 
 	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
 
@@ -416,7 +438,6 @@ display(void) {
 	frameCount();
 
 	glutSwapBuffers();
-	glutPostRedisplay();
 }
 
 void
