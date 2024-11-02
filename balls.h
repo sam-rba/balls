@@ -4,7 +4,7 @@ typedef struct {
 
 typedef struct {
 	Vector min, max;
-} Rectangle;
+} Rect;
 
 /*
  * A partition of the set of all possible collisions between pairs of balls.
@@ -24,8 +24,8 @@ void freePartition(Partition part);
 void printPartition(Partition part);
 
 int isCollision(Vector p1, float r1, Vector p2, float r2);
-Rectangle insetRect(Rectangle r, float n);
-Vector *noOverlapPositions(int n, Rectangle bounds, float radius);
+Rect insetRect(Rect r, float n);
+Vector *noOverlapPositions(int n, Rect bounds, float radius);
 
 float randFloat(float lo, float hi);
-Vector randPtInRect(Rectangle r);
+Vector randPtInRect(Rect r);

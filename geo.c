@@ -13,8 +13,8 @@ isCollision(Vector p1, float r1, Vector p2, float r2) {
 	return (dx*dx + dy*dy) <= rhs*rhs;
 }
 
-Rectangle
-insetRect(Rectangle r, float n) {
+Rect
+insetRect(Rect r, float n) {
 	r.min.x += n;
 	r.min.y += n;
 
@@ -26,7 +26,7 @@ insetRect(Rectangle r, float n) {
 
 /* Generate n circle coordinates within bounds such that no circles overlap. */
 Vector *
-noOverlapPositions(int n, Rectangle bounds, float radius) {
+noOverlapPositions(int n, Rect bounds, float radius) {
 	Vector *ps;
 	int i, j;
 

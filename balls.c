@@ -33,7 +33,7 @@ enum {
 	CIRCLE_POINTS = 32+2, /* +2 for center point and last point which overlaps with first point. */
 };
 
-const Rectangle bounds = { {-1.0, -1.0}, {1.0, 1.0} };
+const Rect bounds = { {-1.0, -1.0}, {1.0, 1.0} };
 
 void initGL(int argc, char *argv[]);
 void initCL(void);

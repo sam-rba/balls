@@ -19,7 +19,7 @@ randFloat(float lo, float hi) {
 }
 
 Vector
-randPtInRect(Rectangle r) {
+randPtInRect(Rect r) {
 	Vector pt = {
 		randFloat(r.min.x, r.max.x),
 		randFloat(r.min.y, r.max.y)
