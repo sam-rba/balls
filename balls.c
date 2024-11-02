@@ -613,7 +613,7 @@ frameCount(void) {
 
 void
 drawString(const char *str) {
-	int i, n;
+	size_t i, n;
 
 	glColor3f(0, 1, 0);
 	glRasterPos2f(0.5, 0.5);
