@@ -144,7 +144,7 @@ initCL(void) {
 	#ifdef WINDOWS
 		cl_context_properties properties[] = {
 			CL_GL_CONTEXT_KHR, (cl_context_properties) wglGetCurrentContext(),
-			CL_GLX_DISPLAY_KHR, (cl_context_properties) wctlGetCurrentDC(),
+			CL_GLX_DISPLAY_KHR, (cl_context_properties) wglGetCurrentDC(),
 			CL_CONTEXT_PLATFORM, (cl_context_properties) platform,
 			0
 		};
