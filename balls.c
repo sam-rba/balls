@@ -31,7 +31,8 @@
 enum {
 	WIDTH = 640,
 	HEIGHT = 640,
-	FPS = 60,
+};
+enum {
 	MS_PER_S = 1000,
 	FRAME_TIME_MS = MS_PER_S / FPS,
  };

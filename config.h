@@ -4,3 +4,5 @@
 #ifdef WINDOWS
 #pragma warning(disable : 4996)
 #endif
+
+enum { FPS = 60 }; /* Frames per second. */

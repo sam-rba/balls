@@ -1,4 +1,5 @@
-#define FPS 60.0f
+#include "config.h"
+
 #define G (9.81f / FPS / FPS)
 #define DENSITY 1500.0f
 
