@@ -186,7 +186,7 @@ initCL(void) {
 	free(progBuf);
 
 	/* Build program. */
-	err = clBuildProgram(prog, 0, NULL, NULL, NULL, NULL);
+	err = clBuildProgram(prog, 0, NULL, "-I./", NULL, NULL);
 	if (err < 0) {
 		/* Print build log. */
 		clGetProgramBuildInfo(prog, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &logSize);
