@@ -25,8 +25,8 @@
 #define FRAGMENT_SHADER "balls.frag"
 
 #define RMIN 0.05 /* Minimum radius. */
-#define RMAX 0.10 /* Maximum radius. */
-#define VMAX_INIT 1.5 /* Maximum initial velocity. */
+#define RMAX 0.15 /* Maximum radius. */
+#define VMAX_INIT 5.0 /* Maximum initial velocity. */
 
 enum {
 	WIDTH = 640,
