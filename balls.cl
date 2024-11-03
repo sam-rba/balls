@@ -2,13 +2,13 @@
 #define G (9.81f / FPS / FPS)
 #define DENSITY 1500.0f
 
-float mass(float radius);
 int isCollision(float2 p1, float r1, float2 p2, float r2);
 void setPosition(float2 *p1, float r1, float2 *p2, float r2);
 void setVelocity(float2 p1, float2 *v1, float r1, float2 p2, float2 *v2, float r2);
 float2 unitNorm(float2 v);
 float fdot(float2 a, float2 b);
 float len(float2 v);
+float mass(float radius);
 float volume(float radius);
 
 __kernel void
@@ -103,11 +103,6 @@ genVertices(__global float2 *positions, __global float *radii, __global float2 *
 	vertices[ball*get_local_size(0)] = center;
 }
 
-float
-mass(float radius) {
-	return volume(radius) * DENSITY;
-}
-
 /* Return true if the two balls are colliding. */
 int
 isCollision(float2 p1, float r1, float2 p2, float r2) {
@@ -160,6 +155,11 @@ fdot(float2 a, float2 b) {
 float
 len(float2 v) {
 	return sqrt(v.x*v.x + v.y*v.y);
+}
+
+float
+mass(float radius) {
+	return volume(radius) * DENSITY;
 }
 
 float
