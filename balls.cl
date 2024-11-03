@@ -15,10 +15,13 @@ float volume(float radius);
 __kernel void
 move(__global float2 *positions, __global float2 *velocities) {
 	size_t id;
+	float2 v;
 
 	id = get_global_id(0);
-	velocities[id].y -= G / FPS;
-	positions[id] += velocities[id] / FPS;
+	v = velocities[id];
+	v.y -= G / FPS;
+	positions[id] += v / FPS;
+	velocities[id] = v;
 }
 
 __kernel void
