@@ -5,6 +5,7 @@
 float mass(float radius);
 int isCollision(float2 p1, float r1, float2 p2, float r2);
 void setPosition(float2 *p1, float r1, float2 *p2, float r2);
+void setVelocity(float2 p1, float2 *v1, float r1, float2 p2, float2 *v2, float r2);
 float2 unitNorm(float2 v);
 float fdot(float2 a, float2 b);
 float len(float2 v);
@@ -58,8 +59,8 @@ collideBalls(
 	__global float *radii
 ) {
 	size_t id, i1, i2;
-	float2 p1, p2, v1, v2, dv, dp, j;
-	float r1, r2, m1, m2;
+	float2 p1, p2, v1, v2;
+	float r1, r2;
 
 	id = get_global_id(0);
 	i1 = ballIndices[2*id];
@@ -71,19 +72,11 @@ collideBalls(
 	v2 = velocities[i2];
 	r1 = radii[i1];
 	r2 = radii[i2];
-	m1 = mass(r1);
-	m2 = mass(r2);
 
 	if (!isCollision(p1, r1, p2, r2))
 		return;
-
 	setPosition(&p1, r1, &p2, r2);
-
-	dv = v2 - v1;
-	dp = p2 - p1;
-	j = dp * 2.0f * m1 * m2 * fdot(dv, dp) / ((r1+r2)*(r1+r2) * (m1+m2));
-	v1 = v1 + j/m1;
-	v2 = v2 - j/m2;
+	setVelocity(p1, &v1, r1, p2, &v2, r2);
 
 	positions[i1] = p1;
 	positions[i2] = p2;
@@ -135,6 +128,23 @@ setPosition(float2 *p1, float r1, float2 *p2, float r2) {
 	n = unitNorm(*p2 - *p1);
 	*p1 = mid - (n*r1 + FLT_EPSILON);
 	*p2 = mid + (n*r2 + FLT_EPSILON);
+}
+
+/* Set the velocities of two balls after collision. */
+void
+setVelocity(float2 p1, float2 *v1, float r1, float2 p2, float2 *v2, float r2) {
+	float m1, m2;
+	float2 dp, dv, j;
+
+	m1 = mass(r1);
+	m2 = mass(r2);
+
+	dp = p2 - p1;
+	dv = *v2 - *v1;
+	j = dp * 2.0f * m1 * m2 * fdot(dv, dp) / ((r1+r2)*(r1+r2) * (m1+m2));
+
+	*v1 = *v1 + j/m1;
+	*v2 = *v2 - j/m2;
 }
 
 float2
