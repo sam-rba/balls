@@ -38,9 +38,7 @@ enum {
  };
 enum { KEY_QUIT = 'q' };
 enum { NBALLS_DEFAULT = 3 };
-enum {
-	CIRCLE_POINTS = 32+2, /* +2 for center point and last point which overlaps with first point. */
-};
+enum { CIRCLE_POINTS = 24 }; /* Number of vertices per circle. */
 
 const Rect bounds = { {-1.0, -1.0}, {1.0, 1.0} };
 
