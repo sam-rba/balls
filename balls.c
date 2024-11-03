@@ -26,7 +26,7 @@
 
 #define RMIN 0.05 /* Minimum radius. */
 #define RMAX 0.10 /* Maximum radius. */
-#define VMAX_INIT 0.05 /* Maximum initial velocity. */
+#define VMAX_INIT 1.5 /* Maximum initial velocity. */
 
 enum {
 	WIDTH = 640,

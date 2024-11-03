@@ -1,6 +1,6 @@
 #include "config.h"
 
-#define G (9.81f / FPS / FPS)
+#define G 9.81f
 #define DENSITY 1500.0f
 
 int isCollision(float2 p1, float r1, float2 p2, float r2);
@@ -17,8 +17,8 @@ move(__global float2 *positions, __global float2 *velocities) {
 	size_t id;
 
 	id = get_global_id(0);
-	velocities[id].y -= G;
-	positions[id] += velocities[id];
+	velocities[id].y -= G / FPS;
+	positions[id] += velocities[id] / FPS;
 }
 
 __kernel void
