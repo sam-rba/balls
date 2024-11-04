@@ -1,0 +1,63 @@
+COMP 426 Assignment 3
+Sam Anthony 40271987
+
+
+= Manycore implementation of 2D bouncing balls simulation on the GPU =
+
+
+# Simulation
+
+This version uses OpenCL to run the simulation on the GPU.  The old C
+functions were transcribed into three OpenCL kernels: move(), which
+updates the positions of the balls; collideWalls(), which reacts to
+collisions between balls and the bounds of the screen; and collideBalls(),
+which reacts to collisions between pairs of balls.
+
+The positions, velocities, and radii of the balls are stored in OpenCL
+buffers in GPU memory.  Vectors are now real float2 vectors as opposed
+to structs in prior implementations.
+
+The move() and collideWalls() kernels run with the global work size set
+to the number of balls.  Each thread works on one of the balls.
+
+The collideBalls() kernel relies on the partitioning scheme from the
+TBB implementation.  The host partitions the set of collisions between
+pairs of balls so that dependencies are separated in different cells of
+the partition.  All collisions within a cell may run in parallel without
+synchronization.  The partition is represented as a 2D array of pairs of
+indices of balls.  Each row of the array represents a cell, and each pair
+of vertices within a row represents a collision between those two balls.
+
+The host creates an OpenCL buffer for each cell of the partition and
+copies the arrays into GPU memory.  To run the collideBalls() kernel,
+the host iterates over the partition and sets the kernel argument to the
+appropriate buffer containing the cell.  The global work size is set to
+the size of the cell.  Each thread works on one collision between a pair
+of balls.
+
+This version of the program uses a different collision formula based on
+the impulse (J) between the two colliding balls.  The formula is based
+on this page:
+
+https://introcs.cs.princeton.edu/java/assignments/collisions.html
+
+
+# Graphics
+
+OpenGL is used to draw the balls on screen.  The program leverages
+interoperability between OpenCL and OpenGL to minimize data transfer
+between host and GPU.
+
+There are two OpenGL vertex buffer objects that reside on the GPU:
+one containing vertices, and one containing colors.  There is also an
+additional OpenCL buffer instantiated with clCreateFromGLBuffer() which
+points to the same data as the GL vertex VBO.
+
+The genVertices() OpenCL kernel sets the vertex buffer according to the
+positions of the balls.  The local work size is the number of vertices
+per ball (24 currently.)  Each thread sets one vertex.  There is one
+work group per ball.  The group id is used to index the position array,
+and the global id is used to index the vertex array.
+
+After the vertices are set, the program uses glDrawArrays() with
+GL_TRIANGLE_FAN to draw the balls on-screen.
