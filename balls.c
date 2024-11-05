@@ -237,11 +237,6 @@ setPositions(void) {
 	if (err < 0)
 		sysfatal("Failed to allocate position buffer.\n");
 
-	/* Copy positions to device. */
-	err = clEnqueueWriteBuffer(queue, positions, CL_TRUE, 0, nBalls*2*sizeof(float), hostPositionBuf, 0, NULL, NULL);
-	if (err < 0)
-		sysfatal("Failed to copy ball positions to device.\n");
-
 	free(hostPositionBuf);
 }
 
@@ -263,11 +258,6 @@ setVelocities(void) {
 	if (err < 0)
 		sysfatal("Failed to allocate velocity buffer.\n");
 
-	/* Copy velocities to device. */
-	err = clEnqueueWriteBuffer(queue, velocities, CL_TRUE, 0, nBalls*2*sizeof(float), hostVelocities, 0, NULL, NULL);
-	if (err < 0)
-		sysfatal("Failed to copy ball velocities to device.\n");
-
 	free(hostVelocities);
 }
 
@@ -286,11 +276,6 @@ setRadii(void) {
 	radii = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, nBalls*sizeof(float), hostRadii, &err);
 	if (err <0)
 		sysfatal("Failed to allocate radii buffer.\n");
-
-	/* Copy radii to device. */
-	err = clEnqueueWriteBuffer(queue, radii, CL_TRUE, 0, nBalls*sizeof(float), hostRadii, 0, NULL, NULL);
-	if (err < 0)
-		sysfatal("Failed to copy radii to device.\n");
 
 	free(hostRadii);
 }
@@ -311,11 +296,6 @@ setCollisions(void) {
 		collisions[i] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, collisionPartition.cells[i].size*2*sizeof(size_t), collisionPartition.cells[i].ballIndices, &err);
 		if (err < 0)
 			sysfatal("Failed to allocate collision buffer.\n");
-
-		/* Copy cell of partition to buffer. */
-		err = clEnqueueWriteBuffer(queue, collisions[i], CL_TRUE, 0, collisionPartition.cells[i].size*2*sizeof(size_t), collisionPartition.cells[i].ballIndices, 0, NULL, NULL);
-		if (err < 0)
-			sysfatal("Failed to copy collision partition to device.\n");
 	}
 }
 
