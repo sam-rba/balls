@@ -44,6 +44,7 @@ const Rect bounds = { {-1.0, -1.0}, {1.0, 1.0} };
 
 void initGL(int argc, char *argv[]);
 void initCL(void);
+int getDevicePlatform(cl_platform_id platforms[], int nPlatforms, cl_device_type devType, cl_device_id *device);
 cl_kernel createKernel(cl_program prog, const char *kernelFunc);
 void setPositions(void);
 void setVelocities(void);
@@ -137,15 +138,33 @@ initGL(int argc, char *argv[]) {
 
 void
 initCL(void) {
-	cl_platform_id platform;
-	cl_device_id device;
+	cl_uint nPlatforms;
+	cl_platform_id *platforms, cpuPlatform, gpuPlatform;
+	size_t i;
+	cl_device_id cpuDevice, gpuDevice;
 	cl_int err;
 	char *progBuf, *progLog;
 	size_t progSize, logSize;
 
-	/* Get platform. */
-	if (clGetPlatformIDs(1, &platform, NULL) < 0)
-		sysfatal("No OpenCL platform available.\n");
+	/* Get platforms. */
+	if (clGetPlatformIDs(0, NULL, &nPlatforms) < 0)
+		sysfatal("Can't get OpenCL platforms.\n");
+	if ((platforms = malloc(nPlatforms*sizeof(cl_platform_id))) == NULL)
+		sysfatal("Failed to allocate platform array.\n");
+	if (clGetPlatformIDs(nPlatforms, platforms, NULL) < 0)
+		sysfatal("Can't get OpenCL platforms.\n");
+
+	/* Get CPU device. */
+	i = getDevicePlatform(platforms, nPlatforms, CL_DEVICE_TYPE_CPU, &cpuDevice);
+	if (i < 0)
+		sysfatal("No CPU device available.\n");
+	cpuPlatform = platforms[i];
+
+	/* Get GPU device. */
+	i = getDevicePlatform(platforms, nPlatforms, CL_DEVICE_TYPE_CPU, &cpuDevice);
+	if (i < 0)
+		sysfatal("No CPU device available.\n");
+	cpuPlatform = platforms[i];
 
 	/* Configure properties for OpenGL interoperability. */
 	#ifdef WINDOWS
@@ -208,6 +227,24 @@ initCL(void) {
 	collideWallsKernel = createKernel(prog, COLLIDE_WALLS_KERNEL_FUNC);
 	collideBallsKernel = createKernel(prog, COLLIDE_BALLS_KERNEL_FUNC);
 	genVerticesKernel = createKernel(prog, GEN_VERTICES_KERNEL_FUNC);
+}
+
+/*
+ * Find a platform with a certain type of device. Sets *device and returns the index
+ * of the platform that it belongs to. Returns -1 if none of the platforms have the
+ * specified type of device.
+ */
+int
+getDevicePlatform(cl_platform_id platforms[], int nPlatforms, cl_device_type devType, cl_device_id *device) {
+	int i, err;
+
+	for (i = 0; i < nPlatforms; i++) {
+		err = clGetDeviceIDs(platforms[i], devType, 1, device, NULL);
+		if (err == CL_SUCCESS) {
+			return i;
+		}
+	}
+	return -1;
 }
 
 cl_kernel
