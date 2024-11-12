@@ -161,10 +161,10 @@ initCL(void) {
 	cpuPlatform = platforms[i];
 
 	/* Get GPU device. */
-	i = getDevicePlatform(platforms, nPlatforms, CL_DEVICE_TYPE_CPU, &cpuDevice);
+	i = getDevicePlatform(platforms, nPlatforms, CL_DEVICE_TYPE_GPU, &gpuDevice);
 	if (i < 0)
-		sysfatal("No CPU device available.\n");
-	cpuPlatform = platforms[i];
+		sysfatal("No GPU device available.\n");
+	gpuPlatform = platforms[i];
 
 	/* Configure properties for OpenGL interoperability. */
 	#ifdef WINDOWS
