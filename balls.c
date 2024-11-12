@@ -304,23 +304,23 @@ setPositions(void) {
 
 void
 setVelocities(void) {
-	float *hostVelocities;
+	float *velocitiesHostBuf;
 	int i, err;
 
 	/* Generate initial ball velocities. */
-	if ((hostVelocities = malloc(nBalls*2*sizeof(float))) == NULL)
+	if ((velocitiesHostBuf = malloc(nBalls*2*sizeof(float))) == NULL)
 		sysfatal("Failed to allocate velocity array.\n");
 	for (i = 0; i < nBalls; i++) {
-		hostVelocities[2*i] = randFloat(-VMAX_INIT, VMAX_INIT);
-		hostVelocities[2*i+1] = randFloat(-VMAX_INIT, VMAX_INIT);
+		velocitiesHostBuf[2*i] = randFloat(-VMAX_INIT, VMAX_INIT);
+		velocitiesHostBuf[2*i+1] = randFloat(-VMAX_INIT, VMAX_INIT);
 	}
 
 	/* Create device-side buffer. */
-	velocities = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, nBalls*2*sizeof(float), hostVelocities, &err);
+	velocitiesCpuBuf = clCreateBuffer(cpuContext, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, nBalls*2*sizeof(float), velocitiesHostBuf, &err);
 	if (err < 0)
 		sysfatal("Failed to allocate velocity buffer.\n");
 
-	free(hostVelocities);
+	free(velocitiesHostBuf);
 }
 
 void
