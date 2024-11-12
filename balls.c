@@ -431,20 +431,20 @@ void
 setKernelArgs(void) {
 	int err;
 
-	err = clSetKernelArg(moveKernel, 0, sizeof(positions), &positions);
-	err |= clSetKernelArg(moveKernel, 1, sizeof(velocities), &velocities);
+	err = clSetKernelArg(moveKernel, 0, sizeof(positionsCpuBuf), &positionsCpuBuf);
+	err |= clSetKernelArg(moveKernel, 1, sizeof(velocitiesCpuBuf), &velocitiesCpuBuf);
 
-	err |= clSetKernelArg(collideWallsKernel, 0, sizeof(positions), &positions);
-	err |= clSetKernelArg(collideWallsKernel, 1, sizeof(velocities), &velocities);
-	err |= clSetKernelArg(collideWallsKernel, 2, sizeof(radii), &radii);
+	err |= clSetKernelArg(collideWallsKernel, 0, sizeof(positionsCpuBuf), &positionsCpuBuf);
+	err |= clSetKernelArg(collideWallsKernel, 1, sizeof(velocitiesCpuBuf), &velocitiesCpuBuf);
+	err |= clSetKernelArg(collideWallsKernel, 2, sizeof(radiiCpuBuf), &radiiCpuBuf);
 
-	err |= clSetKernelArg(collideBallsKernel, 1, sizeof(positions), &positions);
-	err |= clSetKernelArg(collideBallsKernel, 2, sizeof(velocities), &velocities);
-	err |= clSetKernelArg(collideBallsKernel, 3, sizeof(radii), &radii);
+	err |= clSetKernelArg(collideBallsKernel, 1, sizeof(positionsCpuBuf), &positionsCpuBuf);
+	err |= clSetKernelArg(collideBallsKernel, 2, sizeof(velocitiesCpuBuf), &velocitiesCpuBuf);
+	err |= clSetKernelArg(collideBallsKernel, 3, sizeof(radiiCpuBuf), &radiiCpuBuf);
 
-	err |= clSetKernelArg(genVerticesKernel, 0, sizeof(positions), &positions);
-	err |= clSetKernelArg(genVerticesKernel, 1, sizeof(radii), &radii);
-	err |= clSetKernelArg(genVerticesKernel, 2, sizeof(vertexBuf), &vertexBuf);
+	err |= clSetKernelArg(genVerticesKernel, 0, sizeof(positionsGpuBuf), &positionsGpuBuf);
+	err |= clSetKernelArg(genVerticesKernel, 1, sizeof(radiiCpuBuf), &radiiGpuBuf);
+	err |= clSetKernelArg(genVerticesKernel, 2, sizeof(vertexGpuBuf), &vertexGpuBuf);
 
 	if (err < 0)
 		sysfatal("Failed to set kernel arguments.\n");
