@@ -62,6 +62,7 @@ const Rect bounds = { {-1.0, -1.0}, {1.0, 1.0} };
 void initGL(int argc, char *argv[]);
 void initCL(void);
 int getDevicePlatform(cl_platform_id platforms[], int nPlatforms, cl_device_type devType, cl_device_id *device);
+void printBuildLog(cl_program prog, cl_device_id device);
 cl_kernel createKernel(cl_program prog, const char *kernelFunc);
 void setPositions(void);
 void setVelocities(void);
@@ -160,8 +161,8 @@ initCL(void) {
 	cl_device_id cpuDevice, gpuDevice;
 	cl_int err;
 	cl_program cpuProg, gpuProg;
-	char *progBuf, *progLog;
-	size_t progSize, logSize;
+	char *progBuf;
+	size_t progSize;
 
 	/* Get platforms. */
 	if (clGetPlatformIDs(0, NULL, &nPlatforms) < 0)
@@ -208,15 +209,17 @@ initCL(void) {
 	free(progBuf);
 
 	/* Build program. */
-	err = clBuildProgram(prog, 0, NULL, "-I./", NULL, NULL);
+	err = clBuildProgram(cpuProg, 0, NULL, "-I./", NULL, NULL);
+	if (err < 0) {
+		fprintf(stderr, "Failed to build CPU program.\n");
+		printBuildLog(cpuProg, cpuDevice);
+		exit(1);
+	}
+	err = clBuildProgram(gpuProg, 0, NULL, "-I./", NULL, NULL);
 	if (err < 0) {
 		/* Print build log. */
-		clGetProgramBuildInfo(prog, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &logSize);
-		progLog = malloc(logSize + 1);
-		progLog[logSize] = '\0';
-		clGetProgramBuildInfo(prog, device, CL_PROGRAM_BUILD_LOG, logSize+1, progLog, NULL);
-		fprintf(stderr, "%s\n", progLog);
-		free(progLog);
+		fprintf(stderr, "Failed to build GPU program.\n");
+		printBuildLog(gpuProg, gpuDevice);
 		exit(1);
 	}
 
@@ -248,6 +251,20 @@ getDevicePlatform(cl_platform_id platforms[], int nPlatforms, cl_device_type dev
 		}
 	}
 	return -1;
+}
+
+void
+printBuildLog(cl_program prog, cl_device_id device) {
+	size_t size;
+	char *log;
+
+	clGetProgramBuildInfo(prog, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &size);
+	if ((log = malloc(size + 1)) == NULL)
+		sysfatal("Failed to allocate program build log buffer.\n");
+	log[size] = '\0';
+	clGetProgramBuildInfo(prog, device, CL_PROGRAM_BUILD_LOG, size+1, log, NULL);
+	fprintf(stderr, "%s\n", log);
+	free(log);
 }
 
 cl_kernel
