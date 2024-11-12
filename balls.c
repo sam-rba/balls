@@ -351,11 +351,11 @@ setCollisions(void) {
 	printPartition(collisionPartition);
 
 	/* Allocate array of buffers. */
-	if ((collisions = malloc(collisionPartition.size*sizeof(cl_mem))) == NULL)
+	if ((collisionsCpuBuf = malloc(collisionPartition.size*sizeof(cl_mem))) == NULL)
 		sysfatal("Failed to allocate collision buffers.\n");
 	for (i = 0; i < collisionPartition.size; i++) {
 		/* Create device-side buffer. */
-		collisions[i] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, collisionPartition.cells[i].size*2*sizeof(size_t), collisionPartition.cells[i].ballIndices, &err);
+		collisionsCpuBuf[i] = clCreateBuffer(cpuContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, collisionPartition.cells[i].size*2*sizeof(size_t), collisionPartition.cells[i].ballIndices, &err);
 		if (err < 0)
 			sysfatal("Failed to allocate collision buffer.\n");
 	}
