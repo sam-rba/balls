@@ -15,6 +15,23 @@
 #include "balls.h"
 
 #define nelem(arr) (sizeof(arr) / sizeof(arr[0]))
+#define contextProperties(platform) (
+	#ifdef WINDOWS
+		({
+			CL_GL_CONTEXT_KHR, (cl_context_properties) wglGetCurrentContext(),
+			CL_WGL_HDC_KHR, (cl_context_properties) wglGetCurrentDC(),
+			CL_CONTEXT_PLATFORM, (cl_context_properties) (platform),
+			0
+		})
+	#else
+		({
+			CL_GL_CONTEXT_KHR, (cl_context_properties) glXGetCurrentContext(),
+			CL_GLX_DISPLAY_KHR, (cl_context_properties) glXGetCurrentDisplay(),
+			CL_CONTEXT_PLATFORM, (cl_context_properties) (platform),
+			0
+		})
+	#endif
+)
 
 #define PROG_FILE "balls.cl"
 #define MOVE_KERNEL_FUNC "move"
@@ -73,9 +90,9 @@ void drawString(const char *str);
 float *flatten(Vector *vs, int n);
 
 int nBalls;
-cl_context context;
 cl_program prog;
 cl_command_queue queue;
+cl_context cpuContext, gpuContext;
 cl_kernel moveKernel, collideWallsKernel, collideBallsKernel, genVerticesKernel;
 GLuint vertexVAO, vertexVBO, colorVBO;
 cl_mem positions, velocities, radii, *collisions, vertexBuf;
@@ -167,21 +184,8 @@ initCL(void) {
 	gpuPlatform = platforms[i];
 
 	/* Configure properties for OpenGL interoperability. */
-	#ifdef WINDOWS
-		cl_context_properties properties[] = {
-			CL_GL_CONTEXT_KHR, (cl_context_properties) wglGetCurrentContext(),
-			CL_WGL_HDC_KHR, (cl_context_properties) wglGetCurrentDC(),
-			CL_CONTEXT_PLATFORM, (cl_context_properties) platform,
-			0
-		};
-	#else
-		cl_context_properties properties[] = {
-			CL_GL_CONTEXT_KHR, (cl_context_properties) glXGetCurrentContext(),
-			CL_GLX_DISPLAY_KHR, (cl_context_properties) glXGetCurrentDisplay(),
-			CL_CONTEXT_PLATFORM, (cl_context_properties) platform,
-			0
-		};
-	#endif
+	cl_context_properties cpuProperties[] = contextProperties(cpuPlatform);
+	cl_context_properties gpuProperties[] = contextProperties(gpuPlatform);
 
 	/* Get GPU device. */
 	err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, NULL);
