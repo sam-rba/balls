@@ -417,7 +417,7 @@ void
 configSharedData(void) {
 	int err;
 
-	vertexBuf = clCreateFromGLBuffer(context, CL_MEM_WRITE_ONLY, vertexVBO, &err);
+	vertexGpuBuf = clCreateFromGLBuffer(gpuContext, CL_MEM_WRITE_ONLY, vertexVBO, &err);
 	if (err < 0)
 		sysfatal("Failed to create buffer object from VBO.\n");
 }
