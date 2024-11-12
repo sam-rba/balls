@@ -93,7 +93,7 @@ cl_context cpuContext, gpuContext;
 cl_command_queue cpuQueue, gpuQueue;
 cl_kernel moveKernel, collideWallsKernel, collideBallsKernel, genVerticesKernel;
 GLuint vertexVAO, vertexVBO, colorVBO;
-cl_mem positionsCpuBuf, positionsGpuBuf, velocitiesCpuBuf, radiiCpuBuf, *collisionsCpuBuf, vertexGpuBuf;
+cl_mem positionsCpuBuf, positionsGpuBuf, velocitiesCpuBuf, radiiCpuBuf, radiiGpuBuf, *collisionsCpuBuf, vertexGpuBuf;
 float *positionsHostBuf;
 Partition collisionPartition;
 
@@ -334,10 +334,15 @@ setRadii(void) {
 	for (i = 0; i < nBalls; i++)
 		radiiHostBuf[i] = randFloat(RMIN, RMAX);
 
-	/* Create device-side buffer. */
+	/* Create CPU buffer. */
 	radiiCpuBuf = clCreateBuffer(cpuContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, nBalls*sizeof(float), radiiHostBuf, &err);
 	if (err <0)
-		sysfatal("Failed to allocate radii buffer.\n");
+		sysfatal("Failed to allocate radii CPU buffer.\n");
+
+	/* Create GPU buffer. */
+	radiiGpuBuf = clCreateBuffer(gpuContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, nBalls*sizeof(float), radiiHostBuf, &err);
+	if (err <0)
+		sysfatal("Failed to allocate radii GPU buffer.\n");
 
 	free(radiiHostBuf);
 }
