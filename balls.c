@@ -325,21 +325,21 @@ setVelocities(void) {
 
 void
 setRadii(void) {
-	float *hostRadii;
+	float *radiiHostBuf;
 	int i, err;
 
 	/* Generate radii. */
-	if ((hostRadii = malloc(nBalls*sizeof(float))) == NULL)
+	if ((radiiHostBuf = malloc(nBalls*sizeof(float))) == NULL)
 		sysfatal("Failed to allocate radii array.\n");
 	for (i = 0; i < nBalls; i++)
-		hostRadii[i] = randFloat(RMIN, RMAX);
+		radiiHostBuf[i] = randFloat(RMIN, RMAX);
 
 	/* Create device-side buffer. */
-	radii = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, nBalls*sizeof(float), hostRadii, &err);
+	radiiCpuBuf = clCreateBuffer(cpuContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, nBalls*sizeof(float), radiiHostBuf, &err);
 	if (err <0)
 		sysfatal("Failed to allocate radii buffer.\n");
 
-	free(hostRadii);
+	free(radiiHostBuf);
 }
 
 void
