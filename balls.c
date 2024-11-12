@@ -90,7 +90,6 @@ void drawString(const char *str);
 float *flatten(Vector *vs, int n);
 
 int nBalls;
-cl_program prog;
 cl_command_queue queue;
 cl_context cpuContext, gpuContext;
 cl_kernel moveKernel, collideWallsKernel, collideBallsKernel, genVerticesKernel;
@@ -160,6 +159,7 @@ initCL(void) {
 	size_t i;
 	cl_device_id cpuDevice, gpuDevice;
 	cl_int err;
+	cl_program cpuProg, gpuProg;
 	char *progBuf, *progLog;
 	size_t progSize, logSize;
 
@@ -199,9 +199,12 @@ initCL(void) {
 
 	/* Create program from file. */
 	progBuf = readFile(PROG_FILE, &progSize);
-	prog = clCreateProgramWithSource(context, 1, (const char **) &progBuf, &progSize, &err);
+	cpuProg = clCreateProgramWithSource(cpuContext, 1, (const char **) &progBuf, &progSize, &err);
 	if (err < 0)
-		sysfatal("Failed to create program.\n");
+		sysfatal("Failed to create CPU program.\n");
+	gpuProg = clCreateProgramWithSource(gpuContext, 1, (const char **) &progBuf, &progSize, &err);
+	if (err < 0)
+		sysfatal("Failed to create GPU program.\n");
 	free(progBuf);
 
 	/* Build program. */
