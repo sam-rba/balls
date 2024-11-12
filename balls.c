@@ -232,10 +232,10 @@ initCL(void) {
 		sysfatal("Failed to create GPU command queue.\n");
 
 	/* Create kernels. */
-	moveKernel = createKernel(prog, MOVE_KERNEL_FUNC);
-	collideWallsKernel = createKernel(prog, COLLIDE_WALLS_KERNEL_FUNC);
-	collideBallsKernel = createKernel(prog, COLLIDE_BALLS_KERNEL_FUNC);
-	genVerticesKernel = createKernel(prog, GEN_VERTICES_KERNEL_FUNC);
+	moveKernel = createKernel(cpuProg, MOVE_KERNEL_FUNC);
+	collideWallsKernel = createKernel(cpuProg, COLLIDE_WALLS_KERNEL_FUNC);
+	collideBallsKernel = createKernel(cpuProg, COLLIDE_BALLS_KERNEL_FUNC);
+	genVerticesKernel = createKernel(gpuProg, GEN_VERTICES_KERNEL_FUNC);
 }
 
 /*
