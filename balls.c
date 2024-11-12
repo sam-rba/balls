@@ -15,23 +15,21 @@
 #include "balls.h"
 
 #define nelem(arr) (sizeof(arr) / sizeof(arr[0]))
-#define contextProperties(platform) (
-	#ifdef WINDOWS
-		({
-			CL_GL_CONTEXT_KHR, (cl_context_properties) wglGetCurrentContext(),
-			CL_WGL_HDC_KHR, (cl_context_properties) wglGetCurrentDC(),
-			CL_CONTEXT_PLATFORM, (cl_context_properties) (platform),
-			0
-		})
-	#else
-		({
-			CL_GL_CONTEXT_KHR, (cl_context_properties) glXGetCurrentContext(),
-			CL_GLX_DISPLAY_KHR, (cl_context_properties) glXGetCurrentDisplay(),
-			CL_CONTEXT_PLATFORM, (cl_context_properties) (platform),
-			0
-		})
-	#endif
-)
+#ifdef WINDOWS
+#define contextProperties(platform) { \
+	CL_GL_CONTEXT_KHR, (cl_context_properties) wglGetCurrentContext(), \
+	CL_WGL_HDC_KHR, (cl_context_properties) wglGetCurrentDC(), \
+	CL_CONTEXT_PLATFORM, (cl_context_properties) (platform), \
+	0 \
+}
+#else
+#define contextProperties(platform) { \
+	CL_GL_CONTEXT_KHR, (cl_context_properties) glXGetCurrentContext(), \
+	CL_GLX_DISPLAY_KHR, (cl_context_properties) glXGetCurrentDisplay(), \
+	CL_CONTEXT_PLATFORM, (cl_context_properties) (platform), \
+	0 \
+}
+#endif
 
 #define PROG_FILE "balls.cl"
 #define MOVE_KERNEL_FUNC "move"
