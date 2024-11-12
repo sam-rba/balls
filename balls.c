@@ -93,7 +93,8 @@ cl_context cpuContext, gpuContext;
 cl_command_queue cpuQueue, gpuQueue;
 cl_kernel moveKernel, collideWallsKernel, collideBallsKernel, genVerticesKernel;
 GLuint vertexVAO, vertexVBO, colorVBO;
-cl_mem positions, velocities, radii, *collisions, vertexBuf;
+cl_mem positionsCpuBuf, positionsGpuBuf, velocitiesCpuBuf, radiiCpuBuf, *collisionsCpuBuf, vertexGpuBuf;
+float *positionsHostBuf;
 Partition collisionPartition;
 
 int
@@ -131,6 +132,7 @@ main(int argc, char *argv[]) {
 	freeCL();
 	freeGL();
 	freePartition(collisionPartition);
+	free(positionsHostBuf);
 
 	return 0;
 }
@@ -281,21 +283,23 @@ createKernel(cl_program prog, const char *kernelFunc) {
 
 void
 setPositions(void) {
-	Vector *hostPositions;
-	float *hostPositionBuf;
+	Vector *positions;
 	int err;
 
 	/* Generate initial ball positions. */
-	hostPositions = noOverlapPositions(nBalls, bounds, RMAX);
-	hostPositionBuf = flatten(hostPositions, nBalls);
-	free(hostPositions);
+	positions = noOverlapPositions(nBalls, bounds, RMAX);
+	positionsHostBuf = flatten(positions, nBalls);
+	free(positions);
 
-	/* Create device-side buffer. */
-	positions = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, nBalls*2*sizeof(float), hostPositionBuf, &err);
+	/* Create CPU buffer. */
+	positionsCpuBuf = clCreateBuffer(cpuContext, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, nBalls*2*sizeof(float), positionsHostBuf, &err);
 	if (err < 0)
-		sysfatal("Failed to allocate position buffer.\n");
+		sysfatal("Failed to allocate CPU position buffer.\n");
 
-	free(hostPositionBuf);
+	/* Create GPU buffer. */
+	positionsGpuBuf = clCreateBuffer(gpuContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, nBalls*2*sizeof(float), positionsHostBuf, &err);
+	if (err < 0)
+		sysfatal("Failed to allocate GPU position buffer.\n");
 }
 
 void
