@@ -187,19 +187,15 @@ initCL(void) {
 	cl_context_properties cpuProperties[] = contextProperties(cpuPlatform);
 	cl_context_properties gpuProperties[] = contextProperties(gpuPlatform);
 
-	/* Get GPU device. */
-	err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, NULL);
-	if (err < 0) {
-		fprintf(stderr, "No GPU available, falling back to CPU.\n");
-		err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 1, &device, NULL);
-		if (err < 0)
-			sysfatal("No CL devices available.\n");
-	}
-
-	/* Create context. */
-	context = clCreateContext(properties, 1, &device, NULL, NULL, &err);
+	/* Create contexts. */
+	cpuContext = clCreateContext(cpuProperties, 1, &cpuDevice, NULL, NULL, &err);
 	if (err < 0)
-		sysfatal("Failed to create context.\n");
+		sysfatal("Failed to create CPU context.\n");
+	gpuContext = clCreateContext(gpuProperties, 1, &gpuDevice, NULL, NULL, &err);
+	if (err < 0)
+		sysfatal("Failed to create GPU context.\n");
+
+	free(platforms);
 
 	/* Create program from file. */
 	progBuf = readFile(PROG_FILE, &progSize);
