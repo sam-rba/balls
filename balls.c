@@ -91,8 +91,8 @@ void drawString(const char *str);
 float *flatten(Vector *vs, int n);
 
 int nBalls;
-cl_command_queue queue;
 cl_context cpuContext, gpuContext;
+cl_command_queue cpuQueue, gpuQueue;
 cl_kernel moveKernel, collideWallsKernel, collideBallsKernel, genVerticesKernel;
 GLuint vertexVAO, vertexVBO, colorVBO;
 cl_mem positions, velocities, radii, *collisions, vertexBuf;
@@ -223,10 +223,13 @@ initCL(void) {
 		exit(1);
 	}
 
-	/* Create command queue. */
-	queue = clCreateCommandQueue(context, device, 0, &err);
+	/* Create command queues. */
+	cpuQueue = clCreateCommandQueue(cpuContext, cpuDevice, 0, &err);
 	if (err < 0)
-		sysfatal("Failed to create command queue.\n");
+		sysfatal("Failed to create CPU command queue.\n");
+	gpuQueue = clCreateCommandQueue(gpuContext, gpuDevice, 0, &err);
+	if (err < 0)
+		sysfatal("Failed to create GPU command queue.\n");
 
 	/* Create kernels. */
 	moveKernel = createKernel(prog, MOVE_KERNEL_FUNC);
