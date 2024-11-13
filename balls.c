@@ -11,8 +11,9 @@
 #include <GL/glx.h>
 #endif
 
-#include "sysfatal.h"
 #include "balls.h"
+#include "sysfatal.h"
+#include "gl.h"
 
 #define nelem(arr) (sizeof(arr) / sizeof(arr[0]))
 #ifdef WINDOWS
@@ -36,28 +37,20 @@
 #define COLLIDE_WALLS_KERNEL_FUNC "collideWalls"
 #define COLLIDE_BALLS_KERNEL_FUNC "collideBalls"
 #define GEN_VERTICES_KERNEL_FUNC "genVertices"
-#define VERTEX_SHADER "balls.vert"
-#define FRAGMENT_SHADER "balls.frag"
 
 #define RMIN 0.05 /* Minimum radius. */
 #define RMAX 0.15 /* Maximum radius. */
 #define VMAX_INIT 5.0 /* Maximum initial velocity. */
 
 enum {
-	WIDTH = 640,
-	HEIGHT = 640,
-};
-enum {
 	MS_PER_S = 1000,
 	FRAME_TIME_MS = MS_PER_S / FPS,
  };
 enum { KEY_QUIT = 'q' };
 enum { NBALLS_DEFAULT = 3 };
-enum { CIRCLE_POINTS = 24 }; /* Number of vertices per circle. */
 
 const Rect bounds = { {-1.0, -1.0}, {1.0, 1.0} };
 
-void initGL(int argc, char *argv[]);
 void initCL(void);
 int getDevicePlatform(cl_platform_id platforms[], int nPlatforms, cl_device_type devType, cl_device_id *device);
 void printPlatform(cl_platform_id platform);
@@ -68,9 +61,6 @@ void setPositions(void);
 void setVelocities(void);
 void setRadii(void);
 void setCollisions(void);
-void genBuffers(void);
-void genVertexBuffer(void);
-void setColors(void);
 void configSharedData(void);
 void setKernelArgs(void);
 void animate(int v);
@@ -83,7 +73,6 @@ void copyPositionsToGpu(cl_event cpuEvent);
 void reshape(int w, int h);
 void keyboard(unsigned char key, int x, int y);
 void freeCL(void);
-void freeGL(void);
 void initShaders(void);
 void compileShader(GLint shader);
 void frameCount(void);
@@ -118,8 +107,8 @@ main(int argc, char *argv[]) {
 	setRadii();
 	setCollisions();
 
-	genBuffers();
-	setColors();
+	genBuffers(&vertexVAO, &vertexVBO, &colorVBO, nBalls);
+
 	configSharedData();
 
 	setKernelArgs();
@@ -132,27 +121,11 @@ main(int argc, char *argv[]) {
 	glutMainLoop();
 
 	freeCL();
-	freeGL();
+	freeGL(vertexVAO, vertexVBO, colorVBO);
 	freePartition(collisionPartition);
 	free(positionsHostBuf);
 
 	return 0;
-}
-
-void
-initGL(int argc, char *argv[]) {
-	GLenum err;
-
-	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-	glutInitWindowSize(WIDTH, HEIGHT);
-	glutCreateWindow("Balls");
-	glClearColor(1, 1, 1, 1);
-
-	if ((err = glewInit()) != GLEW_OK)
-		sysfatal("Failed to initialize GLEW.\n");
-
-	initShaders();
 }
 
 void
@@ -449,57 +422,6 @@ setCollisions(void) {
 	}
 }
 
-/* Create GL vertex and color buffers. */
-void
-genBuffers(void) {
-	glGenVertexArrays(1, &vertexVAO);
-	glBindVertexArray(vertexVAO);
-
-	/* Generate vertex buffer. */
-	genVertexBuffer();
-
-	/* Generate color buffer. */
-	glGenBuffers(1, &colorVBO);
-}
-
-/* Generate GL vertex buffer. */
-void
-genVertexBuffer(void) {
-	glGenBuffers(1, &vertexVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexVBO);
-	glBufferData(GL_ARRAY_BUFFER, nBalls*CIRCLE_POINTS*2*sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(0);
-}
-
-/* Set ball colors in the GL vertex color buffer. */
-void
-setColors(void) {
-	GLfloat (*colors)[3];
-	GLfloat color[3];
-	int i, j;
-
-	if ((colors = malloc(nBalls*CIRCLE_POINTS*3*sizeof(GLfloat))) == NULL)
-		sysfatal("Failed to allocate color array.\n");
-	for (i = 0; i < nBalls; i++) {
-		color[0] = randFloat(0, 1);
-		color[1] = randFloat(0, 1);
-		color[2] = randFloat(0, 1);
-		for (j = 0; j < CIRCLE_POINTS; j++) {
-			colors[i*CIRCLE_POINTS + j][0] = color[0];
-			colors[i*CIRCLE_POINTS + j][1] = color[1];
-			colors[i*CIRCLE_POINTS + j][2] = color[2];
-		}
-	}
-
-	glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
-	glBufferData(GL_ARRAY_BUFFER, nBalls*CIRCLE_POINTS*3*sizeof(GLfloat), colors, GL_STATIC_DRAW);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(1);
-
-	free(colors);
-}
-
 /* Create CL memory object from vertex buffer. */
 void
 configSharedData(void) {
@@ -688,64 +610,6 @@ freeCL(void) {
 	clReleaseCommandQueue(gpuQueue);
 	clReleaseContext(cpuContext);
 	clReleaseContext(gpuContext);
-}
-
-void
-freeGL(void) {
-	glDeleteBuffers(1, &vertexVBO);
-	glDeleteBuffers(1, &vertexVAO);
-	glDeleteBuffers(1, &colorVBO);
-}
-
-void
-initShaders(void) {
-	GLuint vs, fs, prog;
-	char *vSrc, *fSrc;
-	size_t vLen, fLen;
-
-	vs = glCreateShader(GL_VERTEX_SHADER);
-	fs = glCreateShader(GL_FRAGMENT_SHADER);
-
-	vSrc = readFile(VERTEX_SHADER, &vLen);
-	fSrc = readFile(FRAGMENT_SHADER, &fLen);
-
-	glShaderSource(vs, 1, (const char **) &vSrc, (GLint *) &vLen);
-	glShaderSource(fs, 1, (const char **) &fSrc, (GLint *) &fLen);
-
-	compileShader(vs);
-	compileShader(fs);
-
-	prog = glCreateProgram();
-
-	glBindAttribLocation(prog, 0, "in_coords");
-	glBindAttribLocation(prog, 1, "in_colors");
-
-	glAttachShader(prog, vs);
-	glAttachShader(prog, fs);
-
-	glLinkProgram(prog);
-	glUseProgram(prog);
-}
-
-
-void
-compileShader(GLint shader) {
-	GLint success;
-	GLsizei logSize;
-	GLchar *log;
-
-	glCompileShader(shader);
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-	if (!success) {
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logSize);
-		if ((log = malloc((logSize+1) * sizeof(GLchar))) == NULL)
-			sysfatal("Failed to allocate space for shader compile log.\n");
-		glGetShaderInfoLog(shader, logSize+1, NULL, log);
-		log[logSize] = '\0';
-		fprintf(stderr, "%s\n", log);
-		free(log);
-		exit(1);
-	}
 }
 
 void
