@@ -452,6 +452,8 @@ setKernelArgs(void) {
 
 void
 animate(int v) {
+	cl_event readEvent;
+	int err;
 	clock_t tstart, elapsed;
 	unsigned int nextFrame;
 
@@ -461,7 +463,19 @@ animate(int v) {
 	collideBalls();
 	collideWalls();
 
+	/* Copy new positions from CPU to host asynchronously. */
+	err = clEnqueueReadBuffer(cpuQueue, positionsCpuBuf, CL_FALSE, 0, nBalls*2*sizeof(float), positionsHostBuf, 0, NULL, &readEvent);
+	if (err < 0)
+		sysfatal("Failed to copy positions from CPU to host.\n");
+
 	display();
+
+	/* Copy new positions from host to GPU. */
+	err = clEnqueueWriteBuffer(gpuQueue, positionsGpuBuf, CL_TRUE, 0, nBalls*2*sizeof(float), positionsHostBuf, 1, &readEvent, NULL);
+	if (err < 0)
+		sysfatal("Failed to copy positions from host to GPU.\n");
+
+	clReleaseEvent(readEvent);
 
 	elapsed = (clock() - tstart) / (CLOCKS_PER_SEC / MS_PER_S);
 	nextFrame = (elapsed > FRAME_TIME_MS) ? 0 : FRAME_TIME_MS-elapsed;
