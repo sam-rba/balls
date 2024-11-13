@@ -21,6 +21,8 @@ typedef struct {
 
 int readFile(const char *filename, char **contents, size_t *size);
 
+void initCL(void);
+
 Partition partitionCollisions(size_t nBalls);
 void freePartition(Partition part);
 void printPartition(Partition part);

@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic -Wno-deprecated-declarations
 LDFLAGS = -lGLEW -lGL -lX11 -lGLU -lOpenGL -lOpenCL -lglut -lGLX
 
-SRC = balls.c sysfatal.c geo.c rand.c partition.c gl.c io.c
+SRC = balls.c sysfatal.c geo.c rand.c partition.c gl.c io.c cl.c
 OBJ = ${SRC:.c=.o}
 
 balls: ${OBJ}
