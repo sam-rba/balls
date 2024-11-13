@@ -236,6 +236,9 @@ initCL(void) {
 	collideWallsKernel = createKernel(cpuProg, COLLIDE_WALLS_KERNEL_FUNC);
 	collideBallsKernel = createKernel(cpuProg, COLLIDE_BALLS_KERNEL_FUNC);
 	genVerticesKernel = createKernel(gpuProg, GEN_VERTICES_KERNEL_FUNC);
+
+	clReleaseProgram(cpuProg);
+	clReleaseProgram(gpuProg);
 }
 
 /*
@@ -578,22 +581,25 @@ void
 freeCL(void) {
 	size_t i;
 
-	clReleaseMemObject(positions);
-	clReleaseMemObject(velocities);
-	clReleaseMemObject(radii);
+	clReleaseMemObject(positionsCpuBuf);
+	clReleaseMemObject(positionsGpuBuf);
+	clReleaseMemObject(velocitiesCpuBuf);
+	clReleaseMemObject(radiiCpuBuf);
+	clReleaseMemObject(radiiGpuBuf);
 	for (i = 0; i < collisionPartition.size; i++)
-		clReleaseMemObject(collisions[i]);
-	free(collisions);
-	clReleaseMemObject(vertexBuf);
+		clReleaseMemObject(collisionsCpuBufs[i]);
+	free(collisionsCpuBufs);
+	clReleaseMemObject(vertexGpuBuf);
 
 	clReleaseKernel(moveKernel);
 	clReleaseKernel(collideWallsKernel);
 	clReleaseKernel(collideBallsKernel);
 	clReleaseKernel(genVerticesKernel);
 
-	clReleaseCommandQueue(queue);
-	clReleaseProgram(prog);
-	clReleaseContext(context);
+	clReleaseCommandQueue(cpuQueue);
+	clReleaseCommandQueue(gpuQueue);
+	clReleaseContext(cpuContext);
+	clReleaseContext(gpuContext);
 }
 
 void
