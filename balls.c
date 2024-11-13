@@ -85,7 +85,6 @@ void keyboard(unsigned char key, int x, int y);
 void freeCL(void);
 void freeGL(void);
 void initShaders(void);
-char *readFile(const char *filename, size_t *size);
 void compileShader(GLint shader);
 void frameCount(void);
 void drawString(const char *str);
@@ -210,7 +209,9 @@ initCL(void) {
 	free(platforms);
 
 	/* Create program from file. */
-	progBuf = readFile(PROG_FILE, &progSize);
+	err = readFile(PROG_FILE, &progBuf, &progSize);
+	if (err != 0)
+		sysfatal("Failed to read %s\n", PROG_FILE);
 	cpuProg = clCreateProgramWithSource(cpuContext, 1, (const char **) &progBuf, &progSize, &err);
 	if (err < 0)
 		sysfatal("Failed to create CPU program.\n");
@@ -726,25 +727,6 @@ initShaders(void) {
 	glUseProgram(prog);
 }
 
-char *
-readFile(const char *filename, size_t *size) {
-	FILE *f;
-	char *buf;
-
-	if ((f = fopen(filename, "r")) == NULL)
-		sysfatal("Failed to open file '%s'\n", filename);
-	fseek(f, 0, SEEK_END);
-	*size = ftell(f);
-	if ((buf = malloc((*size + 1) * sizeof(char))) == NULL) {
-		fclose(f);
-		sysfatal("Failed to allocate file buffer for '%s'\n", filename);
-	}
-	rewind(f);
-	fread(buf, sizeof(char), *size, f);
-	buf[*size] = '\0';
-	fclose(f);
-	return buf;
-}
 
 void
 compileShader(GLint shader) {

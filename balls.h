@@ -19,6 +19,8 @@ typedef struct {
 	size_t size; /* Length of cell array. */
 } Partition;
 
+int readFile(const char *filename, char **contents, size_t *size);
+
 Partition partitionCollisions(size_t nBalls);
 void freePartition(Partition part);
 void printPartition(Partition part);
