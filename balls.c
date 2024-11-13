@@ -555,7 +555,7 @@ genVertices(void) {
 
 	glFinish();
 
-	err = clEnqueueAcquireGLObjects(gpuQueue, 1, &vertexBuf, 0, NULL, NULL);
+	err = clEnqueueAcquireGLObjects(gpuQueue, 1, &vertexGpuBuf, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Couldn't acquire the GL objects.\n");
 
@@ -569,8 +569,8 @@ genVertices(void) {
 	if (err < 0)
 		sysfatal("Couldn't enqueue the kernel.\n");
 
-	clEnqueueReleaseGLObjects(gpuQueue, 1, &vertexBuf, 0, NULL, NULL);
-	clFinish(queue);
+	clEnqueueReleaseGLObjects(gpuQueue, 1, &vertexGpuBuf, 0, NULL, NULL);
+	clFinish(gpuQueue);
 	clReleaseEvent(kernelEvent);
 }
 
