@@ -78,8 +78,8 @@ void display(void);
 void reshape(int w, int h);
 void keyboard(unsigned char key, int x, int y);
 void move(void);
-void collideWalls(void);
 void collideBalls(void);
+cl_event collideWalls(void);
 void genVertices(void);
 void freeCL(void);
 void freeGL(void);
@@ -373,7 +373,7 @@ setPositions(void) {
 	free(positions);
 
 	/* Create CPU buffer. */
-	positionsCpuBuf = clCreateBuffer(cpuContext, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, nBalls*2*sizeof(float), positionsHostBuf, &err);
+	positionsCpuBuf = clCreateBuffer(cpuContext, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, nBalls*2*sizeof(float), positionsHostBuf, &err);
 	if (err < 0)
 		sysfatal("Failed to allocate CPU position buffer.\n");
 
@@ -533,6 +533,7 @@ setKernelArgs(void) {
 
 void
 animate(int v) {
+	cl_event cpuEvent;
 	int err;
 	clock_t tstart, elapsed;
 	unsigned int nextFrame;
@@ -541,16 +542,15 @@ animate(int v) {
 
 	move();
 	collideBalls();
-	collideWalls();
+	cpuEvent = collideWalls();
 
 	display();
 
-	/* Copy new positions from CPU to host. */
-	err = clEnqueueReadBuffer(cpuQueue, positionsCpuBuf, CL_TRUE, 0, nBalls*2*sizeof(float), positionsHostBuf, 0, NULL, NULL);
+	/* Copy new positions to GPU. */
+	err = clWaitForEvents(1, &cpuEvent);
 	if (err < 0)
-		sysfatal("Failed to copy positions from CPU to host.\n");
-
-	/* Copy new positions from host to GPU. */
+		sysfatal("Error waiting for CPU kernel to finish.\n");
+	clReleaseEvent(cpuEvent);
 	err = clEnqueueWriteBuffer(gpuQueue, positionsGpuBuf, CL_TRUE, 0, nBalls*2*sizeof(float), positionsHostBuf, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Failed to copy positions from host to GPU.\n");
@@ -601,17 +601,6 @@ move(void) {
 }
 
 void
-collideWalls(void) {
-	size_t size;
-	int err;
-
-	size = nBalls;
-	err = clEnqueueNDRangeKernel(cpuQueue, collideWallsKernel, 1, NULL, &size, NULL, 0, NULL, NULL);
-	if (err < 0)
-		sysfatal("Couldn't enqueue kernel.\n");
-}
-
-void
 collideBalls(void) {
 	int i, err;
 
@@ -623,6 +612,19 @@ collideBalls(void) {
 		if (err < 0)
 			sysfatal("Couldn't enqueue kernel.\n");
 	}
+}
+
+cl_event
+collideWalls(void) {
+	size_t size;
+	cl_event event;
+	int err;
+
+	size = nBalls;
+	err = clEnqueueNDRangeKernel(cpuQueue, collideWallsKernel, 1, NULL, &size, NULL, 0, NULL, &event);
+	if (err < 0)
+		sysfatal("Couldn't enqueue kernel.\n");
+	return event;
 }
 
 void
