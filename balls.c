@@ -60,6 +60,8 @@ const Rect bounds = { {-1.0, -1.0}, {1.0, 1.0} };
 void initGL(int argc, char *argv[]);
 void initCL(void);
 int getDevicePlatform(cl_platform_id platforms[], int nPlatforms, cl_device_type devType, cl_device_id *device);
+void printPlatform(cl_platform_id platform);
+void printDevice(cl_device_id device);
 void printBuildLog(cl_program prog, cl_device_id device);
 cl_kernel createKernel(cl_program prog, const char *kernelFunc);
 void setPositions(void);
@@ -177,12 +179,20 @@ initCL(void) {
 	if (i < 0)
 		sysfatal("No CPU device available.\n");
 	cpuPlatform = platforms[i];
+	printf("CPU platform: ");
+	printPlatform(cpuPlatform);
+	printf("CPU device: ");
+	printDevice(cpuDevice);
 
 	/* Get GPU device. */
 	i = getDevicePlatform(platforms, nPlatforms, CL_DEVICE_TYPE_GPU, &gpuDevice);
 	if (i < 0)
 		sysfatal("No GPU device available.\n");
 	gpuPlatform = platforms[i];
+	printf("GPU platform: ");
+	printPlatform(gpuPlatform);
+	printf("GPU device: ");
+	printDevice(gpuDevice);
 
 	/* Configure properties for OpenGL interoperability. */
 	cl_context_properties cpuProperties[] = contextProperties(cpuPlatform);
@@ -258,6 +268,74 @@ getDevicePlatform(cl_platform_id platforms[], int nPlatforms, cl_device_type dev
 	}
 	return -1;
 }
+
+void
+printPlatform(cl_platform_id platform) {
+	int err;
+	size_t size;
+	char *buf;
+
+	/* Get size of string. */
+	err = clGetPlatformInfo(platform, CL_PLATFORM_NAME, 0, NULL, &size);
+	if (err < 0) {
+		printf("ERROR getting platform name\n");
+		return;
+	}
+
+	if ((buf = malloc(size+1)) == NULL) {
+		printf("ERROR allocating buffer\n");
+		return;
+	}
+
+	/* Get platform name. */
+	err = clGetPlatformInfo(platform, CL_PLATFORM_NAME, size, buf, NULL);
+	if (err < 0) {
+		printf("ERROR getting platform name\n");
+		return;
+	}
+	buf[size] = '\0';
+	printf("%s\n", buf);
+	free(buf);
+}
+
+void
+printDevice(cl_device_id device) {
+	int err;
+	size_t size;
+	char *buf;
+	cl_bool available;
+
+	/* Get size of string. */
+	err = clGetDeviceInfo(device, CL_DEVICE_NAME, 0, NULL, &size);
+	if (err < 0) {
+		printf("ERROR getting device name\n");
+		return;
+	}
+
+	if ((buf = malloc(size+1)) == NULL) {
+		printf("ERROR allocating buffer\n");
+		return;
+	}
+
+	/* Get device name. */
+	err = clGetDeviceInfo(device, CL_DEVICE_NAME, size, buf, NULL);
+	if (err < 0) {
+		printf("ERROR getting device nam\n");
+		return;
+	}
+	buf[size] = '\0';
+	printf("%s ", buf);
+	free(buf);
+
+	/* Get availability. */
+	err = clGetDeviceInfo(device, CL_DEVICE_AVAILABLE, sizeof(available), &available, NULL);
+	if (err < 0) {
+		printf("ERROR getting device availability\n");
+		return;
+	}
+	printf("(%savailable)\n", (!available) ? "un" : "");
+}
+
 
 void
 printBuildLog(cl_program prog, cl_device_id device) {
