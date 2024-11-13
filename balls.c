@@ -93,7 +93,7 @@ cl_context cpuContext, gpuContext;
 cl_command_queue cpuQueue, gpuQueue;
 cl_kernel moveKernel, collideWallsKernel, collideBallsKernel, genVerticesKernel;
 GLuint vertexVAO, vertexVBO, colorVBO;
-cl_mem positionsCpuBuf, positionsGpuBuf, velocitiesCpuBuf, radiiCpuBuf, radiiGpuBuf, *collisionsCpuBuf, vertexGpuBuf;
+cl_mem positionsCpuBuf, positionsGpuBuf, velocitiesCpuBuf, radiiCpuBuf, radiiGpuBuf, *collisionsCpuBufs, vertexGpuBuf;
 float *positionsHostBuf;
 Partition collisionPartition;
 
@@ -356,11 +356,11 @@ setCollisions(void) {
 	printPartition(collisionPartition);
 
 	/* Allocate array of buffers. */
-	if ((collisionsCpuBuf = malloc(collisionPartition.size*sizeof(cl_mem))) == NULL)
+	if ((collisionsCpuBufs = malloc(collisionPartition.size*sizeof(cl_mem))) == NULL)
 		sysfatal("Failed to allocate collision buffers.\n");
 	for (i = 0; i < collisionPartition.size; i++) {
 		/* Create device-side buffer. */
-		collisionsCpuBuf[i] = clCreateBuffer(cpuContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, collisionPartition.cells[i].size*2*sizeof(size_t), collisionPartition.cells[i].ballIndices, &err);
+		collisionsCpuBufs[i] = clCreateBuffer(cpuContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, collisionPartition.cells[i].size*2*sizeof(size_t), collisionPartition.cells[i].ballIndices, &err);
 		if (err < 0)
 			sysfatal("Failed to allocate collision buffer.\n");
 	}
@@ -538,7 +538,7 @@ collideBalls(void) {
 	int i, err;
 
 	for (i = 0; i < collisionPartition.size; i++) {
-		err = clSetKernelArg(collideBallsKernel, 0, sizeof(collisions[i]), collisions+i);
+		err = clSetKernelArg(collideBallsKernel, 0, sizeof(collisionsCpuBufs[i]), collisionsCpuBufs+i);
 		if (err < 0)
 			sysfatal("Failed to set argument of %s kernel.\n", COLLIDE_BALLS_KERNEL_FUNC);
 		err = clEnqueueNDRangeKernel(cpuQueue, collideBallsKernel, 1, NULL, &collisionPartition.cells[i].size, NULL, 0, NULL, NULL);
