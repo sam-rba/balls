@@ -545,7 +545,8 @@ animate(int v) {
 	collideBalls();
 	cpuEvent = collideWalls();
 
-	/* Disply current from with GPU. */
+	/* Display current frame with GPU. */
+	genVertices();
 	display();
 
 	/* Copy next frame's positions from CPU to GPU. */
@@ -562,8 +563,6 @@ display(void) {
 	int i;
 
 	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
-
-	genVertices();
 
 	glBindVertexArray(vertexVAO);
 	for (i = 0; i < nBalls; i++)
