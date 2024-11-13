@@ -517,7 +517,7 @@ move(void) {
 	int err;
 
 	size = nBalls;
-	err = clEnqueueNDRangeKernel(queue, moveKernel, 1, NULL, &size, NULL, 0, NULL, NULL);
+	err = clEnqueueNDRangeKernel(cpuQueue, moveKernel, 1, NULL, &size, NULL, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Couldn't enqueue kernel.\n");
 }
@@ -528,7 +528,7 @@ collideWalls(void) {
 	int err;
 
 	size = nBalls;
-	err = clEnqueueNDRangeKernel(queue, collideWallsKernel, 1, NULL, &size, NULL, 0, NULL, NULL);
+	err = clEnqueueNDRangeKernel(cpuQueue, collideWallsKernel, 1, NULL, &size, NULL, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Couldn't enqueue kernel.\n");
 }
@@ -541,7 +541,7 @@ collideBalls(void) {
 		err = clSetKernelArg(collideBallsKernel, 0, sizeof(collisions[i]), collisions+i);
 		if (err < 0)
 			sysfatal("Failed to set argument of %s kernel.\n", COLLIDE_BALLS_KERNEL_FUNC);
-		err = clEnqueueNDRangeKernel(queue, collideBallsKernel, 1, NULL, &collisionPartition.cells[i].size, NULL, 0, NULL, NULL);
+		err = clEnqueueNDRangeKernel(cpuQueue, collideBallsKernel, 1, NULL, &collisionPartition.cells[i].size, NULL, 0, NULL, NULL);
 		if (err < 0)
 			sysfatal("Couldn't enqueue kernel.\n");
 	}
@@ -555,13 +555,13 @@ genVertices(void) {
 
 	glFinish();
 
-	err = clEnqueueAcquireGLObjects(queue, 1, &vertexBuf, 0, NULL, NULL);
+	err = clEnqueueAcquireGLObjects(gpuQueue, 1, &vertexBuf, 0, NULL, NULL);
 	if (err < 0)
 		sysfatal("Couldn't acquire the GL objects.\n");
 
 	localSize = CIRCLE_POINTS;
 	globalSize = nBalls * localSize;
-	err = clEnqueueNDRangeKernel(queue, genVerticesKernel, 1, NULL, &globalSize, &localSize, 0, NULL, &kernelEvent);
+	err = clEnqueueNDRangeKernel(gpuQueue, genVerticesKernel, 1, NULL, &globalSize, &localSize, 0, NULL, &kernelEvent);
 	if (err < 0)
 		sysfatal("Couldn't enqueue kernel.\n");
 
@@ -569,7 +569,7 @@ genVertices(void) {
 	if (err < 0)
 		sysfatal("Couldn't enqueue the kernel.\n");
 
-	clEnqueueReleaseGLObjects(queue, 1, &vertexBuf, 0, NULL, NULL);
+	clEnqueueReleaseGLObjects(gpuQueue, 1, &vertexBuf, 0, NULL, NULL);
 	clFinish(queue);
 	clReleaseEvent(kernelEvent);
 }
