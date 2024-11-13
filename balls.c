@@ -14,16 +14,10 @@
 
 #define nelem(arr) (sizeof(arr) / sizeof(arr[0]))
 
-#define RMIN 0.05 /* Minimum radius. */
-#define RMAX 0.15 /* Maximum radius. */
-#define VMAX_INIT 5.0 /* Maximum initial velocity. */
-
 enum {
 	MS_PER_S = 1000,
 	FRAME_TIME_MS = MS_PER_S / FPS,
  };
-enum { KEY_QUIT = 'q' };
-enum { NBALLS_DEFAULT = 3 };
 
 const Rect bounds = { {-1.0, -1.0}, {1.0, 1.0} };
 
