@@ -80,6 +80,7 @@ void keyboard(unsigned char key, int x, int y);
 void move(void);
 void collideBalls(void);
 cl_event collideWalls(void);
+void copyPositionsToGpu(cl_event cpuEvent);
 void genVertices(void);
 void freeCL(void);
 void freeGL(void);
@@ -534,27 +535,23 @@ setKernelArgs(void) {
 void
 animate(int v) {
 	cl_event cpuEvent;
-	int err;
 	clock_t tstart, elapsed;
 	unsigned int nextFrame;
 
 	tstart = clock();
 
+	/* Start computing next frame on CPU. */
 	move();
 	collideBalls();
 	cpuEvent = collideWalls();
 
+	/* Disply current from with GPU. */
 	display();
 
-	/* Copy new positions to GPU. */
-	err = clWaitForEvents(1, &cpuEvent);
-	if (err < 0)
-		sysfatal("Error waiting for CPU kernel to finish.\n");
-	clReleaseEvent(cpuEvent);
-	err = clEnqueueWriteBuffer(gpuQueue, positionsGpuBuf, CL_TRUE, 0, nBalls*2*sizeof(float), positionsHostBuf, 0, NULL, NULL);
-	if (err < 0)
-		sysfatal("Failed to copy positions from host to GPU.\n");
+	/* Copy next frame's positions from CPU to GPU. */
+	copyPositionsToGpu(cpuEvent);
 
+	/* Display next frame. */
 	elapsed = (clock() - tstart) / (CLOCKS_PER_SEC / MS_PER_S);
 	nextFrame = (elapsed > FRAME_TIME_MS) ? 0 : FRAME_TIME_MS-elapsed;
 	glutTimerFunc(nextFrame, animate, 0);
@@ -625,6 +622,20 @@ collideWalls(void) {
 	if (err < 0)
 		sysfatal("Couldn't enqueue kernel.\n");
 	return event;
+}
+
+/* Wait for the CPU to finish computing the new positions and then copy them to the GPU. */
+void
+copyPositionsToGpu(cl_event cpuEvent) {
+	int err;
+
+	err = clWaitForEvents(1, &cpuEvent);
+	if (err < 0)
+		sysfatal("Error waiting for CPU kernel to finish.\n");
+	clReleaseEvent(cpuEvent);
+	err = clEnqueueWriteBuffer(gpuQueue, positionsGpuBuf, CL_TRUE, 0, nBalls*2*sizeof(float), positionsHostBuf, 0, NULL, NULL);
+	if (err < 0)
+		sysfatal("Failed to copy positions from host to GPU.\n");
 }
 
 void
