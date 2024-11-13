@@ -74,14 +74,14 @@ void setColors(void);
 void configSharedData(void);
 void setKernelArgs(void);
 void animate(int v);
-void display(void);
-void reshape(int w, int h);
-void keyboard(unsigned char key, int x, int y);
 void move(void);
 void collideBalls(void);
 cl_event collideWalls(void);
-void copyPositionsToGpu(cl_event cpuEvent);
 void genVertices(void);
+void display(void);
+void copyPositionsToGpu(cl_event cpuEvent);
+void reshape(int w, int h);
+void keyboard(unsigned char key, int x, int y);
 void freeCL(void);
 void freeGL(void);
 void initShaders(void);
@@ -559,33 +559,6 @@ animate(int v) {
 }
 
 void
-display(void) {
-	int i;
-
-	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
-
-	glBindVertexArray(vertexVAO);
-	for (i = 0; i < nBalls; i++)
-		glDrawArrays(GL_TRIANGLE_FAN, i*CIRCLE_POINTS, CIRCLE_POINTS);
-	glBindVertexArray(0);
-
-	frameCount();
-
-	glutSwapBuffers();
-}
-
-void
-reshape(int w, int h) {
-	glViewport(0, 0, (GLsizei) w, (GLsizei) h);
-}
-
-void
-keyboard(unsigned char key, int x, int y) {
-	if (key == KEY_QUIT)
-		glutDestroyWindow(glutGetWindow());
-}
-
-void
 move(void) {
 	size_t size;
 	int err;
@@ -623,20 +596,6 @@ collideWalls(void) {
 	return event;
 }
 
-/* Wait for the CPU to finish computing the new positions and then copy them to the GPU. */
-void
-copyPositionsToGpu(cl_event cpuEvent) {
-	int err;
-
-	err = clWaitForEvents(1, &cpuEvent);
-	if (err < 0)
-		sysfatal("Error waiting for CPU kernel to finish.\n");
-	clReleaseEvent(cpuEvent);
-	err = clEnqueueWriteBuffer(gpuQueue, positionsGpuBuf, CL_TRUE, 0, nBalls*2*sizeof(float), positionsHostBuf, 0, NULL, NULL);
-	if (err < 0)
-		sysfatal("Failed to copy positions from host to GPU.\n");
-}
-
 void
 genVertices(void) {
 	int err;
@@ -662,6 +621,47 @@ genVertices(void) {
 	clEnqueueReleaseGLObjects(gpuQueue, 1, &vertexGpuBuf, 0, NULL, NULL);
 	clFinish(gpuQueue);
 	clReleaseEvent(kernelEvent);
+}
+
+void
+display(void) {
+	int i;
+
+	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
+
+	glBindVertexArray(vertexVAO);
+	for (i = 0; i < nBalls; i++)
+		glDrawArrays(GL_TRIANGLE_FAN, i*CIRCLE_POINTS, CIRCLE_POINTS);
+	glBindVertexArray(0);
+
+	frameCount();
+
+	glutSwapBuffers();
+}
+
+/* Wait for the CPU to finish computing the new positions and then copy them to the GPU. */
+void
+copyPositionsToGpu(cl_event cpuEvent) {
+	int err;
+
+	err = clWaitForEvents(1, &cpuEvent);
+	if (err < 0)
+		sysfatal("Error waiting for CPU kernel to finish.\n");
+	clReleaseEvent(cpuEvent);
+	err = clEnqueueWriteBuffer(gpuQueue, positionsGpuBuf, CL_TRUE, 0, nBalls*2*sizeof(float), positionsHostBuf, 0, NULL, NULL);
+	if (err < 0)
+		sysfatal("Failed to copy positions from host to GPU.\n");
+}
+
+void
+reshape(int w, int h) {
+	glViewport(0, 0, (GLsizei) w, (GLsizei) h);
+}
+
+void
+keyboard(unsigned char key, int x, int y) {
+	if (key == KEY_QUIT)
+		glutDestroyWindow(glutGetWindow());
 }
 
 void
