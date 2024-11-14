@@ -37,8 +37,6 @@ void copyPositionsToGpu(cl_event cpuEvent);
 void reshape(int w, int h);
 void keyboard(unsigned char key, int x, int y);
 void freeCL(void);
-void initShaders(void);
-void compileShader(GLint shader);
 void frameCount(void);
 void drawString(const char *str);
 float *flatten(Vector *vs, int n);
