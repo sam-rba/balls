@@ -1,63 +1,115 @@
-COMP 426 Assignment 3
+COMP 426 Project
 Sam Anthony 40271987
 
 
-= Manycore implementation of 2D bouncing balls simulation on the GPU =
+= Heterogeneous Multicore Implementation of 2D Bouncing Balls Simulation Using OpenCL =
+
+The PCAM methodology was used to redesign the bouncing balls simulation
+as a heterogeneous multicore program.  There are four steps in PCAM:
+Partitioning, Communication, Agglomeration, and Mapping.  The program
+was designed as a pipeline that runs on the CPU and GPU in parallel.
 
 
-# Simulation
+# Partitioning
 
-This version uses OpenCL to run the simulation on the GPU.  The old C
-functions were transcribed into three OpenCL kernels: move(), which
-updates the positions of the balls; collideWalls(), which reacts to
-collisions between balls and the bounds of the screen; and collideBalls(),
-which reacts to collisions between pairs of balls.
+The first step of PCAM is partitioning.  It involves breaking the
+computation into individual pieces.
 
-The positions, velocities, and radii of the balls are stored in OpenCL
-buffers in GPU memory.  Vectors are now real float2 vectors as opposed
-to structs in prior implementations.
+Functional decomposition was used to split the computation into tasks
+and extract coarse-grained parallelism from the program.  There are four
+tasks: 1) update the positions of the balls, 2) check for collisions
+between balls, 3) check for collisions with the edges of the screen, and
+4) generate the vertex array.  One OpenCL kernel was developed for each
+of these tasks: move(), collideBalls(), collideWalls(), and genVertices().
 
-The move() and collideWalls() kernels run with the global work size set
-to the number of balls.  Each thread works on one of the balls.
-
-The collideBalls() kernel relies on the partitioning scheme from the
-TBB implementation.  The host partitions the set of collisions between
-pairs of balls so that dependencies are separated in different cells of
-the partition.  All collisions within a cell may run in parallel without
-synchronization.  The partition is represented as a 2D array of pairs of
-indices of balls.  Each row of the array represents a cell, and each pair
-of vertices within a row represents a collision between those two balls.
-
-The host creates an OpenCL buffer for each cell of the partition and
-copies the arrays into GPU memory.  To run the collideBalls() kernel,
-the host iterates over the partition and sets the kernel argument to the
-appropriate buffer containing the cell.  The global work size is set to
-the size of the cell.  Each thread works on one collision between a pair
-of balls.
-
-This version of the program uses a different collision formula based on
-the impulse (J) between the two colliding balls.  The formula is based
-on this page:
-
-https://introcs.cs.princeton.edu/java/assignments/collisions.html
+Data decomposition was used to extract fine-grained parallelism from
+the collideBalls() task. The partitioning involves building sets of
+independent pairs of balls that can be tested for collision in parallel.
+The set of possible collisions between balls is represented as the edges
+of a completely connected graph.  The partition is built by repeatedly
+finding matchings on this graph.  A matching is a set of independent
+edges.  Two edges are independent if they don't share any vertices.
+Therefore, all pairs of balls (edges) in a matching can be tested for
+collision in parallel.  This partitioning is performed only once at
+startup time and it removes the need for any synchronization at run time.
 
 
-# Graphics
+# Communication
 
-OpenGL is used to draw the balls on screen.  The program leverages
-interoperability between OpenCL and OpenGL to minimize data transfer
-between host and GPU.
+The second step of PCAM is communication where the flow of data from one
+task to the next is identified.  On a high level, the task dependency
+graph is strightforward, with data flowing linearly from task 1 to 2 to
+3 to 4.
 
-There are two OpenGL vertex buffer objects that reside on the GPU:
-one containing vertices, and one containing colors.  There is also an
-additional OpenCL buffer instantiated with clCreateFromGLBuffer() which
-points to the same data as the GL vertex VBO.
+[move] -> [collideBalls] -> [collideWalls] -> [genVertices]
 
-The genVertices() OpenCL kernel sets the vertex buffer according to the
-positions of the balls.  The local work size is the number of vertices
-per ball (24 currently.)  Each thread sets one vertex.  There is one
-work group per ball.  The group id is used to index the position array,
-and the global id is used to index the vertex array.
+There is a smaller dependency graph within step 2 (collideBalls()).
+Each cell of the partition is computed one after the other in a straight line.
+But all collisions within a cell are computed in parallel.
 
-After the vertices are set, the program uses glDrawArrays() with
-GL_TRIANGLE_FAN to draw the balls on-screen.
+           Cell 1                            Cell n
+  +----------------------+           +----------------------+
+  |  --> [collision] --  |           |  --> [collision] --  |
+  | /                  \ |           | /                  \ |
+----      ...           -----> ... ----      ...           ---->
+  | \                  / |           | \                  / |
+  |  --> [collision] --  |           |  --> [collision] --  |
+  +----------------------+           +----------------------+
+
+
+# Agglomeration and Mapping
+
+The final two steps of PCAM are agglomeration and mapping.  Agglomeration
+involves grouping tasks together to minimize communication.  Finally,
+groups of tasks are mapped to processors that will execute them.
+
+The program was being developed for a heterogeneous system with a
+CPU and a GPU.  The tasks were divided into two groups: those that
+operate balls, and those that operate on vertices.  The first three
+tasks—move, collideBalls, and collideWalls—work with the positions,
+velocities, etc. of the balls, so they go into the first group.  Task
+4—genVertices—generates an array of vertices from the positions of
+the balls, so it goes in the second group.
+
+The GPU typically has many more compute units than the CPU.  For example,
+the development system has 8 CPU cores and 28 GPU CUs.  The number of
+vertices is an order of magnitude greater than the number of balls
+because each ball is drawn with many vertices (32).  Therefore, the
+vertex-related task 4, which has a very high degree of data-parallelism,
+was mapped to the GPU.  The other three tasks were mapped to the CPU.
+
+A four-stage pipeline with one task per stage was considered, but in
+the end, the first three tasks were agglomerated and a two-stage
+pipeline was used.  The first stage—consisting of the move,
+collideBalls, and collideWalls tasks—runs on the CPU.  The second
+stage—genVertices—runs on the GPU.
+
+
+# Implementation Notes
+
+Little's Law says that the capacity of a pipeline must be at least
+the product of the bandwidth and latency (C >= b * l).  In this case,
+the bandwidth is 1 since each stage computes one frame at a time, and
+the latency is 2 because there are two stages.  Therefore, the memory
+capacity must be at least twice that required to compute a single frame
+sequentially.  The positions of the balls are held in two buffers, one on
+the CPU and one on the GPU.  The two stages communicate by copying the CPU
+buffer to the GPU after the CPU finishes computing the updated positions.
+
+Since CPU device memory is allocated from host memory anyway, the CPU-side
+buffer was created with CL_MEM_USE_HOST_PTR.  This allows the CPU buffer
+to be directly copied from host to GPU, without needing to copy from CPU
+to host first.  Note that clEnqueueCopyBuffer() cannot be used because
+the CPU and GPU may be from different platforms, and thus cannot share
+a context.
+
+The kernels for each pipeline stage are executed asynchronously from
+the host, so they run in parallel on the two devices.  When both stages
+have finished, the updated positions are copied forward from the CPU to
+the GPU.
+
+time -->
+
+CPU | [move]->[collideBalls]->[collideWalls]->event|
+                                                   |
+GPU | [genVertices]--------->[draw screen]-------->| [copy buffer]
