@@ -16,4 +16,4 @@ enum window {
 enum { KEY_QUIT = 'q' };
 
 enum { NBALLS_DEFAULT = 3 };
-enum { CIRCLE_POINTS = 24 }; /* Number of vertices per circle. */
+enum { CIRCLE_POINTS = 32 }; /* Number of vertices per circle. */
